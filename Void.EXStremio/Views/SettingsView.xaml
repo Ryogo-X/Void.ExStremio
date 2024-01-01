@@ -1,0 +1,52 @@
+﻿<wpf:WindowBase x:Class="Void.EXStremio.Views.SettingsView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Void.EXStremio.ViewModels"
+        xmlns:local="clr-namespace:Void.EXStremio.Views"
+        xmlns:wpf="clr-namespace:Void.EXStremio.WPF"
+        mc:Ignorable="d" d:DataContext="{d:DesignData Type={x:Type vm:SettingsViewModel}, IsDesignTimeCreatable=False}"
+        Title="Settings" Height="320" Width="480">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="128" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="32" />
+                <RowDefinition Height="32" />
+                <RowDefinition Height="32" />
+                <RowDefinition Height="32" />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+
+            <TextBlock Style="{StaticResource textBlockField}" Text="Executable Path" />
+            <DockPanel Grid.Column="2">
+                <Button Style="{StaticResource fieldElementBase}" Width="32" DockPanel.Dock="Right" Content="..." Command="{Binding SelectFileCommand}" />
+                <TextBox Style="{StaticResource textBoxField}" Text="{Binding ExecutablePath}" IsReadOnly="True" />
+            </DockPanel>
+
+            <TextBlock Grid.Row="1" Style="{StaticResource textBlockField}" Text="Autostart Stremio" />
+            <CheckBox Grid.Row="1" Grid.Column="2" Style="{StaticResource checkBoxField}" IsChecked="{Binding StartStremio}" />
+
+            <TextBlock Grid.Row="2" Style="{StaticResource textBlockField}" Text="Autoclose Stremio" />
+            <CheckBox Grid.Row="2" Grid.Column="2" Style="{StaticResource checkBoxField}" IsChecked="{Binding CloseStremio}" />
+
+            <TextBlock Grid.Row="3" Style="{StaticResource textBlockField}" Text="Autoclose with Stremio" />
+            <CheckBox Grid.Row="3" Grid.Column="2" Style="{StaticResource checkBoxField}" IsChecked="{Binding CloseWithStremio}" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Style="{StaticResource actionButton}" Content="Cancel" Command="{Binding CancelCommand}" />
+            <Button Style="{StaticResource actionButton}" Content="Save" Command="{Binding SaveCommand}" Margin="5,0,0,0" />
+        </StackPanel>
+    </Grid>
+</wpf:WindowBase>
