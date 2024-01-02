@@ -32,8 +32,8 @@ namespace Void.EXStremio.Web.Providers.Stream {
 
                 return streams.Select(stream => {
                     return new Models.Stream() {
-                        Name = $"{hdRezkaMetaItem.Title} {stream.Quality}",
-                        Title = meta.Name,
+                        Name = $"[HDRezka]\n{stream.Quality}",
+                        Title = meta.Name + "\n" + hdRezkaMetaItem.Title,
                         Url = stream.Url,
                     };
                 });
