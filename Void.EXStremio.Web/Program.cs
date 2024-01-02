@@ -47,7 +47,10 @@ namespace Void.EXStremio.Web {
 
             app.MapGet("/routes", (IEnumerable<EndpointDataSource> endpointSources) => string.Join("\n", endpointSources.SelectMany(source => source.Endpoints)));
 
-            //app.UseCors();
+            app.UseCors(config => {
+                config.AllowAnyOrigin();
+                config.AllowAnyMethod();
+            });
 
             app.Use((ctx, next) => next(ctx));
 
