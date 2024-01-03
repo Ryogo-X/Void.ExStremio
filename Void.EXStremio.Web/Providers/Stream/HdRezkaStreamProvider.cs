@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp;
@@ -346,7 +345,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 var response = await client.PostAsync(url, formContent);
                 var json = await response.Content.ReadAsStringAsync();
                 var data = System.Text.Json.JsonSerializer.Deserialize<HdRezkaApiResponse>(json);
-                var decoded = PayloadDecode(data.Payload);
+                var decoded = HdRezkaPayloadDecoder.Decode(data.Payload);
                 var parts = decoded.Split(",");
                 return parts.Select(part => {
                     var quality = Regex.Match(part, @"(\[.*?\])").Value;
@@ -385,7 +384,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 
                 var html = apiResponse.EpisodesHtml;
 
-                var decoded = PayloadDecode(apiResponse.Payload);
+                var decoded = HdRezkaPayloadDecoder.Decode(apiResponse.Payload);
                 var parts = decoded.Split(",");
                 return parts.Select(part => {
                     var quality = Regex.Match(part, @"(\[.*?\])").Value;
@@ -399,60 +398,6 @@ namespace Void.EXStremio.Web.Providers.Stream {
                     return new MovieMediaStream(streamUrl, item.quality);
                 }).ToArray();
             }
-        }
-
-        static string PayloadDecode(string encodedPayload) {
-            encodedPayload = encodedPayload.Substring(2);
-            //var decodedPayload = Regex.Replace(encodedPayload, "(//_)|(//[a-zA-Z0-9=]{1,16})", "");
-
-            //return Encoding.UTF8.GetString(Convert.FromBase64String(decodedPayload));
-
-            var decodedPayload = "";
-            var prevIdx = 0;
-            while (true) {
-                if (prevIdx == encodedPayload.Length) { break; }
-
-                var nextIdx = encodedPayload.IndexOf("//_//", prevIdx == 0 ? prevIdx : prevIdx + 1);
-                if (nextIdx == -1) {
-                    nextIdx = encodedPayload.Length; 
-                }
-
-                var tmpString = "";
-                while (true) {
-                    tmpString = encodedPayload.Substring(prevIdx, nextIdx - prevIdx);
-                    if (tmpString.Length < 4) {
-                        break;
-                    }
-
-                    if (tmpString.StartsWith("//_//")) {
-                        prevIdx = prevIdx + 5;
-                        continue;
-                    } else if (tmpString.StartsWith("//_/")) {
-                        prevIdx = prevIdx + 4;
-                        continue;
-                    } else if (tmpString.StartsWith("//")) {
-                        prevIdx = prevIdx + 2;
-                        continue;
-                    }
-                    var encodedChunk = tmpString.Substring(0, 4);
-                    var decodedChunk = Encoding.UTF8.GetString(Convert.FromBase64String(encodedChunk));
-                    if (Regex.IsMatch(decodedChunk, @"[!$@#^]{2,3}")) {
-                        prevIdx = prevIdx + 4;
-                        continue;
-                    }
-
-                    break;
-                }
-
-                decodedPayload += tmpString;
-                prevIdx = nextIdx;
-            }
-
-            if (decodedPayload.Contains("/")) {
-                decodedPayload.ToString();
-            }
-
-            return Encoding.UTF8.GetString(Convert.FromBase64String(decodedPayload));
         }
 
         HttpClient GetClient() {
@@ -528,6 +473,70 @@ namespace Void.EXStremio.Web.Providers.Stream {
 
             //[System.Text.Json.Serialization.JsonPropertyName("thumbnails")]
             //public string Thumbnails { get; set; }
+        }
+    }
+
+    public class HdRezkaPayloadDecoder {
+        public static string Decode(string payload) {
+            var fixedPayload = payload;
+
+            if (fixedPayload[0] == '#') {
+                fixedPayload = fixedPayload.Substring(2);
+            }
+
+            Func<string, int> getTrashLength = (bufferString) => {
+                var length = 0;
+                for(var i = 2; i < bufferString.Length; i = i + 2) {
+                    var buffer = bufferString.Substring(0, i);
+                    var decoded = "BUFF";
+                    try {
+                        decoded = Encoding.UTF8.GetString(Convert.FromBase64String(buffer.Length % 4 == 0 ? buffer : buffer + "=="));
+                    } catch {
+                        // SKIP ERROR
+                    }
+
+                    if (!Regex.IsMatch(decoded, "^[!$@#^]*$")) { break; }
+
+                    length = i;
+                }
+
+                return (int)(Math.Round(length / 4d) * 4);
+            };
+
+            while (Regex.IsMatch(fixedPayload, "[/_]{2,}")) {
+                var patternStart = Regex.Match(fixedPayload, "[/_]{2,}").Value;
+                var idx = fixedPayload.IndexOf(patternStart);
+
+                var nextIdx = fixedPayload.IndexOfAny(['/', '='], idx + patternStart.Length);
+                if (nextIdx == -1 || nextIdx == fixedPayload.Length - 2) {
+                    var length = Math.Min(64, fixedPayload.Length - (idx + patternStart.Length));
+                    var trashLength = getTrashLength(fixedPayload.Substring(idx + patternStart.Length, length));
+                    var pattern = fixedPayload.Substring(idx, trashLength + patternStart.Length);
+                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
+
+                    continue;
+                }
+
+                var patternEnd = fixedPayload.Substring(nextIdx, 2);
+                if (patternEnd[0] == '=') {
+                    var pattern = fixedPayload.Substring(idx, nextIdx - idx + 1);
+                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
+                } else if (patternEnd[1] != '/' && patternEnd[1] != '_') {
+                    var trashLength = nextIdx - idx - patternStart.Length;
+                    var length = patternStart.Length + trashLength + 1 + trashLength;
+                    var pattern = fixedPayload.Substring(idx, length);
+                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
+                } else {
+                    var trashLength = nextIdx - patternStart.Length - idx;
+                    if (trashLength > 16) {
+                        trashLength = getTrashLength(fixedPayload.Substring(idx + patternStart.Length, 64));
+                    }
+                    var pattern = fixedPayload.Substring(idx, trashLength + patternStart.Length);
+                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
+                }
+            }
+
+            return Encoding.UTF8.GetString(Convert.FromBase64String(fixedPayload));
         }
     }
 }

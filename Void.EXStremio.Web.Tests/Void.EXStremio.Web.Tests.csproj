@@ -22,4 +22,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Void.EXStremio.Web\Void.EXStremio.Web.csproj" />
+  </ItemGroup>
+
 </Project>
