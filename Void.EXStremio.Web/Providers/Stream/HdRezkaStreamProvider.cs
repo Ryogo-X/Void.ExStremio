@@ -23,7 +23,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
             return hdRezkaMetaItems.SelectMany(hdRezkaMetaItem => {
                 var streams = Array.Empty<IMediaStream>();
                 if (searchResult.Type == HdRezkaMediaType.Movie) {
-                    streams = apiClient.GetMovieStreams(searchResult.Url, hdRezkaMetaItem.Id, hdRezkaMetaItem.TranslatorId, hdRezkaMetaItem.IsCamrip.Value, hdRezkaMetaItem.HasAds.Value, hdRezkaMetaItem.IsDirectorCut.Value).Result;
+                    streams = apiClient.GetMovieStreams(searchResult.Url, hdRezkaMetaItem.Id, hdRezkaMetaItem.TranslatorId, hdRezkaMetaItem.IsCamrip, hdRezkaMetaItem.HasAds, hdRezkaMetaItem.IsDirectorCut).Result;
                 } else if (searchResult.Type == HdRezkaMediaType.Series) {
                     streams = apiClient.GetSeriesEpisodeStreams(searchResult.Url, hdRezkaMetaItem.Id, hdRezkaMetaItem.TranslatorId, season.Value, episode.Value).Result;
                 } else {
@@ -45,7 +45,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 var rank = searchResult.Titles.Select(title => {
                     return LevenshteinDistance(meta.Name + " " + meta.Year, title + " " + searchResult.StartYear);
                 }).OrderBy(pts => pts).First();
-                if (searchResult.Type.ToString().ToLowerInvariant() != meta.Type.ToLowerInvariant()) { rank = 10; }
+                //if (searchResult.Type.ToString().ToLowerInvariant() != meta.Type.ToLowerInvariant()) { rank = 10; }
 
                 return new {
                     Rank = Math.Max(10 - rank, 0),
@@ -202,7 +202,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                         type = HdRezkaMediaType.Series;
                         description = description.Substring(0, description.Length - "сериал".Length).Trim(new[] { ' ', ',' });
                     } else if (description.EndsWith("мультфильм")) {
-                        if (yearString.Contains("-")) { type = HdRezkaMediaType.Series; }
+                        if (yearString.Contains("-") || meta.Type == "series") { type = HdRezkaMediaType.Series; }
                         description = description.Substring(0, description.Length - "мультфильм".Length).Trim(new[] { ' ', ',' });
                     } else if (description.EndsWith("аниме")) {
                         if (yearString.Contains("-")) { type = HdRezkaMediaType.Series; }
@@ -213,7 +213,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                     }
                     var originalTitles = !string.IsNullOrWhiteSpace(description) ? description.Split(" / ", StringSplitOptions.TrimEntries) : new string[0];
 
-                    var yearStrings = yearString.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                   var yearStrings = yearString.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     int.TryParse(yearStrings[0], out var startYear);
                     int.TryParse(yearStrings.Length > 1 ? yearStrings[1] : "", out var endYear);
 
@@ -323,16 +323,22 @@ namespace Void.EXStremio.Web.Providers.Stream {
             }
         }
 
-        public async Task<IMediaStream[]> GetMovieStreams(Uri refererUrl, int id, int translatorId, bool isCamrip, bool hasAds, bool isDirectorsCut) {
+        public async Task<IMediaStream[]> GetMovieStreams(Uri refererUrl, int id, int translatorId, bool? isCamrip, bool? hasAds, bool? isDirectorsCut) {
             using (var client = GetClient()) {
                 var vars = new List<KeyValuePair<string, string>> {
                     new KeyValuePair<string, string>("id", id.ToString()),
                     new KeyValuePair<string, string>("translator_id", translatorId.ToString()),
-                    new KeyValuePair<string, string>("is_camrip", isCamrip ? "1" : "0"),
-                    new KeyValuePair<string, string>("is_ads", hasAds ? "1" : "0"),
-                    new KeyValuePair<string, string>("is_director", isDirectorsCut ? "1" : "0"),
                     new KeyValuePair<string, string>("action", "get_movie")
                 };
+                if (isCamrip.HasValue) {
+                    vars.Add(new KeyValuePair<string, string>("is_camrip", isCamrip.Value ? "1" : "0"));
+                }
+                if (hasAds.HasValue) {
+                    vars.Add(new KeyValuePair<string, string>("is_ads", hasAds.Value ? "1" : "0"));
+                }
+                if (isDirectorsCut.HasValue) {
+                    vars.Add(new KeyValuePair<string, string>("is_director", isDirectorsCut.Value ? "1" : "0"));
+                }
                 var formContent = new FormUrlEncodedContent(vars);
 
                 client.DefaultRequestHeaders.Add("Referer", refererUrl.ToString());
@@ -372,7 +378,11 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 var response = await client.PostAsync(url, formContent);
                 var json = await response.Content.ReadAsStringAsync();
                 var apiResponse = System.Text.Json.JsonSerializer.Deserialize<HdRezkaApiResponse>(json);
-
+                if (!apiResponse.Success) {
+                    // if we try to request episode which does not exists we'll get unsuccessful response
+                    return new IMediaStream[0];
+                }
+                
                 var html = apiResponse.EpisodesHtml;
 
                 var decoded = PayloadDecode(apiResponse.Payload);
@@ -416,6 +426,9 @@ namespace Void.EXStremio.Web.Providers.Stream {
 
                     if (tmpString.StartsWith("//_//")) {
                         prevIdx = prevIdx + 5;
+                        continue;
+                    } else if (tmpString.StartsWith("//_/")) {
+                        prevIdx = prevIdx + 4;
                         continue;
                     } else if (tmpString.StartsWith("//")) {
                         prevIdx = prevIdx + 2;
