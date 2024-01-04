@@ -20,6 +20,7 @@ namespace Void.EXStremio.Web.Controllers {
         // GET /stream/movie/tt0032138
         [HttpGet("/stream/{type}/{id}")]
         public async Task<JsonResult> Get(string type, string id) {
+            Console.WriteLine("[STREAMS]");
             id = id.Replace(".json", "");
             var parts = id.Split(':', StringSplitOptions.RemoveEmptyEntries);
             id = parts[0];
@@ -46,6 +47,7 @@ namespace Void.EXStremio.Web.Controllers {
         [HttpGet("/stream/play/{encodedUrl}")]
         [HttpHead("/stream/play/{encodedUrl}")]
         public async Task<FileStreamResult> Play(string encodedUrl) {
+            Console.WriteLine("[PLAY]");
             var isRangeRequest = Request.Headers.ContainsKey("Range");
 
             var url = Encoding.UTF8.GetString(Convert.FromBase64String(encodedUrl));
