@@ -1,13 +1,13 @@
 
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using System.Net;
 using System.Reflection;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Void.EXStremio.Web {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
+    public class Program {
+        public static void Main(string[] args) {
             AppContext.SetSwitch("Switch.Microsoft.AspNetCore.Mvc.EnableRangeProcessing", true);
 
             var builder = WebApplication.CreateBuilder();
@@ -35,6 +35,17 @@ namespace Void.EXStremio.Web {
             });
 
             var app = builder.Build();
+
+            app.UseExceptionHandler(exceptionHandlerApp => {
+                exceptionHandlerApp.Run(async context => {
+                    var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+
+                    var error = exceptionHandlerPathFeature?.Error;
+                    if (error != null) {
+                        Console.WriteLine($"{DateTime.Now.ToString("HH:mm:ss")}: [ERROR]\n{error.Message}\n{error.StackTrace}");
+                    }
+                });
+            });
 
             // Configure the HTTP request pipeline.
 
