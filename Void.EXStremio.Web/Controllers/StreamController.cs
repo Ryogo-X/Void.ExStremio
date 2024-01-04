@@ -60,8 +60,11 @@ namespace Void.EXStremio.Web.Controllers {
                 }
             }
 
+            Console.WriteLine("[BEFORE REQUEST]");
             var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
+            Console.WriteLine("[AFTER REQUEST]");
             var stream = await response.Content.ReadAsStreamAsync();
+            Console.WriteLine("[AFTER STREAM]");
 
             var result = File(stream, response.Content.Headers.ContentType?.ToString(), true);
             Response.Headers.Append("Accept-Ranges", "bytes");
