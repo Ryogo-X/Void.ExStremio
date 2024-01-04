@@ -20,7 +20,6 @@ namespace Void.EXStremio.Web.Controllers {
         // GET /stream/movie/tt0032138
         [HttpGet("/stream/{type}/{id}")]
         public async Task<JsonResult> Get(string type, string id) {
-            Console.WriteLine("[STREAMS]");
             id = id.Replace(".json", "");
             var parts = id.Split(':', StringSplitOptions.RemoveEmptyEntries);
             id = parts[0];
@@ -36,7 +35,8 @@ namespace Void.EXStremio.Web.Controllers {
 
             foreach(var stream in streams) {
                 var encodedUrl = Convert.ToBase64String(Encoding.UTF8.GetBytes(stream.Url));
-                stream.Url = Request.Scheme + "://" + Request.Host.ToUriComponent() + "/stream/play/" + encodedUrl;
+                var prefix = Request.Headers.ContainsKey("X-Forwarded-Prefix") ? Request.Headers["X-Forwarded-Prefix"].First()?.TrimEnd('/') : "";
+                stream.Url = Request.Scheme + "://" + Request.Host.ToUriComponent() + prefix + "/stream/play/" + encodedUrl;
             }
 
             return new JsonResult(new {
