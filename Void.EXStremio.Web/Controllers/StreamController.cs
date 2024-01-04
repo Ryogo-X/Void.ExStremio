@@ -7,6 +7,7 @@ using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using Void.EXStremio.Web.Providers.Metadata;
 using Void.EXStremio.Web.Providers.Stream;
+using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Controllers {
     [ApiController]
@@ -35,8 +36,7 @@ namespace Void.EXStremio.Web.Controllers {
 
             foreach(var stream in streams) {
                 var encodedUrl = Convert.ToBase64String(Encoding.UTF8.GetBytes(stream.Url));
-                var prefix = Request.Headers.ContainsKey("X-Forwarded-Prefix") ? Request.Headers["X-Forwarded-Prefix"].First()?.TrimEnd('/') : "";
-                stream.Url = Request.Scheme + "://" + Request.Host.ToUriComponent() + prefix + "/stream/play/" + encodedUrl;
+                stream.Url = UrlBuilder.AbsoluteUrl(Request, "/stream/play/" + encodedUrl).ToString();
             }
 
             return new JsonResult(new {
