@@ -477,6 +477,52 @@ namespace Void.EXStremio.Web.Providers.Stream {
     }
 
     public class HdRezkaPayloadDecoder {
+        readonly static string regexExpression;
+
+        static HdRezkaPayloadDecoder() {
+            regexExpression = GenerateRegexExpression();
+        }
+
+        static string GenerateRegexExpression() {
+            var expression = "[/_]{1,}(stems){1,}";
+            var stremString = string.Empty;
+
+            {
+                var sequences = Enumerable.Range(0, 2).Select(_ => "!$@#^");
+                var stems = CartesianProduct(sequences)
+                    .Select(chars => string.Join("", chars))
+                    .Select(stem => Convert.ToBase64String(Encoding.UTF8.GetBytes(stem)))
+                    .ToArray();
+                stremString = string.Join('|', stems);
+            }
+
+            {
+                var sequences = Enumerable.Range(0, 3).Select(_ => "!$@#^");
+                var stems = CartesianProduct(sequences)
+                    .Select(chars => string.Join("", chars))
+                    .Select(stem => Convert.ToBase64String(Encoding.UTF8.GetBytes(stem)))
+                    .ToArray();
+                stremString += "|" + string.Join('|', stems);
+            }
+            expression = expression.Replace("stems", stremString);
+
+            return expression;
+        }
+
+        static IEnumerable<IEnumerable<T>> CartesianProduct<T>(IEnumerable<IEnumerable<T>> sequences) {
+            // base case: 
+            IEnumerable<IEnumerable<T>> result = new[] { Enumerable.Empty<T>() };
+            foreach (var sequence in sequences) {
+                var s = sequence; // don't close over the loop variable 
+                                  // recursive case: use SelectMany to build the new product out of the old one 
+                result =
+                    from seq in result
+                    from item in s
+                    select seq.Concat(new[] { item });
+            }
+            return result;
+        }
+
         public static string Decode(string payload) {
             var fixedPayload = payload;
 
@@ -484,56 +530,11 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 fixedPayload = fixedPayload.Substring(2);
             }
 
-            Func<string, int> getTrashLength = (bufferString) => {
-                var length = 0;
-                for(var i = 2; i < bufferString.Length; i = i + 2) {
-                    var buffer = bufferString.Substring(0, i);
-                    var decoded = "BUFF";
-                    try {
-                        decoded = Encoding.UTF8.GetString(Convert.FromBase64String(buffer.Length % 4 == 0 ? buffer : buffer + "=="));
-                    } catch {
-                        // SKIP ERROR
-                    }
+            while (true) {
+                var match = Regex.Matches(fixedPayload, regexExpression).LastOrDefault();
+                if (match == null) { break; }
 
-                    if (!Regex.IsMatch(decoded, "^[!$@#^]*$")) { break; }
-
-                    length = i;
-                }
-
-                return (int)(Math.Round(length / 4d) * 4);
-            };
-
-            while (Regex.IsMatch(fixedPayload, "[/_]{2,}")) {
-                var patternStart = Regex.Match(fixedPayload, "[/_]{2,}").Value;
-                var idx = fixedPayload.IndexOf(patternStart);
-
-                var nextIdx = fixedPayload.IndexOfAny(['/', '='], idx + patternStart.Length);
-                if (nextIdx == -1 || nextIdx == fixedPayload.Length - 2) {
-                    var length = Math.Min(64, fixedPayload.Length - (idx + patternStart.Length));
-                    var trashLength = getTrashLength(fixedPayload.Substring(idx + patternStart.Length, length));
-                    var pattern = fixedPayload.Substring(idx, trashLength + patternStart.Length);
-                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
-
-                    continue;
-                }
-
-                var patternEnd = fixedPayload.Substring(nextIdx, 2);
-                if (patternEnd[0] == '=') {
-                    var pattern = fixedPayload.Substring(idx, nextIdx - idx + 1);
-                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
-                } else if (patternEnd[1] != '/' && patternEnd[1] != '_') {
-                    var trashLength = nextIdx - idx - patternStart.Length;
-                    var length = patternStart.Length + trashLength + 1 + trashLength;
-                    var pattern = fixedPayload.Substring(idx, length);
-                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
-                } else {
-                    var trashLength = nextIdx - patternStart.Length - idx;
-                    if (trashLength > 16) {
-                        trashLength = getTrashLength(fixedPayload.Substring(idx + patternStart.Length, 64));
-                    }
-                    var pattern = fixedPayload.Substring(idx, trashLength + patternStart.Length);
-                    fixedPayload = fixedPayload.Replace(pattern, string.Empty);
-                }
+                fixedPayload = fixedPayload.Replace(match.Value, string.Empty);
             }
 
             return Encoding.UTF8.GetString(Convert.FromBase64String(fixedPayload));
