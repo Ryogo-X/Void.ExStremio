@@ -18,23 +18,23 @@ namespace Void.EXStremio.Web.Controllers {
                 }
             } });
 
-            if (type == "any" && id == "kinopoisk") {
-                var keyword = searchArg.Split('=').Last().Replace(".json", "");
-                var provider = new KinopoiskProvider();
+            //if (type == "any" && id == "kinopoisk") {
+            //    var keyword = searchArg.Split('=').Last().Replace(".json", "");
+            //    var provider = new KinopoiskProvider();
 
-                var items = await provider.Search(keyword);
-                items = items.Take(10).AsParallel().Select(item => {
-                    var kpId = item.Id.Replace("kp", "");
-                    item = provider.Get(long.Parse(kpId)).Result;
-                    if (!string.IsNullOrEmpty(item.ImdbId)) {
-                        item.Id = item.ImdbId;
-                    }
+            //    var items = await provider.Search(keyword);
+            //    items = items.Take(10).AsParallel().Select(item => {
+            //        var kpId = item.Id.Replace("kp", "");
+            //        item = provider.Get(long.Parse(kpId)).Result;
+            //        if (!string.IsNullOrEmpty(item.ImdbId)) {
+            //            item.Id = item.ImdbId;
+            //        }
 
-                    return item;
-                }).ToArray();
+            //        return item;
+            //    }).ToArray();
 
-                return new JsonResult(new { metas = items });
-            }
+            //    return new JsonResult(new { metas = items });
+            //}
 
             return null;
         }

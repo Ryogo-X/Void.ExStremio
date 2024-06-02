@@ -7,11 +7,12 @@ using static Void.EXStremio.Web.Providers.Stream.HdRezkaApi;
 
 namespace Void.EXStremio.Web.Providers.Stream {
     public class HdRezkaStreamProvider {
+        //http://hdrezka9fjjwp.org
         static readonly CookieContainer cookies = new CookieContainer();
 
         string[] types = new[] { "сериал", "мультфильм", "аниме" };
 
-        public async Task<Models.Stream[]> Get(Models.Meta meta, int? season = null, int? episode = null) {
+        public async Task<Models.MediaStream[]> Get(Models.Meta meta, int? season = null, int? episode = null) {
             var apiClient = new HdRezkaApi(new Uri("https://hdrezka.me/"), cookies);
             var searchResults = await apiClient.Search(meta);
             if (!searchResults.Any()) { return null; }
@@ -30,7 +31,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 }
 
                 return streams.Select(stream => {
-                    return new Models.Stream() {
+                    return new Models.MediaStream() {
                         Name = $"[HDRezka]\n{stream.Quality}",
                         Title = meta.Name + "\n" + hdRezkaMetaItem.Title,
                         Url = stream.Url,
@@ -62,7 +63,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
             return rankedResult.SearchResult;
         }
 
-        async Task<Models.Stream[]> GetStreams(string title, string url, int? season = null, int? episode = null) {
+        async Task<Models.MediaStream[]> GetStreams(string title, string url, int? season = null, int? episode = null) {
             using(var client = GetClient()) {
                 var html = await client.GetStringAsync(url);
                 var document = await GetDocument(url, html);
@@ -86,7 +87,7 @@ namespace Void.EXStremio.Web.Providers.Stream {
                 return translatorParamsItems.SelectMany(translatorParamsItem => {
                     var streams = apiClient.GetMovieStreams(new Uri(url), translatorParamsItem.Id, translatorParamsItem.TranslatorId, translatorParamsItem.IsCamrip, translatorParamsItem.HasAds, translatorParamsItem.IsDirectorCut).Result;
                     return streams.Select(stream => {
-                        return new Models.Stream() {
+                        return new Models.MediaStream() {
                             Name = $"{translatorParamsItem.Title} {stream.Quality}",
                             Title = title,
                             Url = stream.Url

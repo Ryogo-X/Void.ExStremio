@@ -1,9 +1,16 @@
 ﻿using System.Text.Json.Serialization;
 
 namespace Void.EXStremio.Web.Models {
-    class Metadata {
-        public Meta Meta { get; set; }
+    public class MetaResponse<T> where T : Meta {
+        public T Meta { get; set; }
     } 
+
+    public class ExtendedMeta : Meta {
+        [JsonIgnore]
+        public string[] AlternativeTitles { get; set; }
+        [JsonIgnore]
+        public string[] LocalizedTitles { get; set; }
+    }
 
     public partial class Meta {
         [JsonPropertyName("awards")]
@@ -22,7 +29,7 @@ namespace Void.EXStremio.Web.Models {
         public string[] Director { get; set; }
 
         [JsonPropertyName("dvdRelease")]
-        public DateTimeOffset DvdRelease { get; set; }
+        public DateTimeOffset? DvdRelease { get; set; }
 
         [JsonPropertyName("genre")]
         public string[] Genre { get; set; }
@@ -33,6 +40,11 @@ namespace Void.EXStremio.Web.Models {
         [JsonPropertyName("imdb_id")]
         public string ImdbId { get; set; }
 
+        [JsonPropertyName("kpRating")]
+        public string KpRating { get; set; }
+
+        [JsonPropertyName("kp_id")]
+        public string KpId { get; set; }
         [JsonPropertyName("name")]
         public string Name { get; set; }
         [JsonIgnore]
@@ -57,7 +69,7 @@ namespace Void.EXStremio.Web.Models {
         public string[] Writer { get; set; }
 
         [JsonPropertyName("year")]
-        public int? Year { get; set; }
+        public string Year { get; set; }
 
         [JsonIgnore]
         public int? StartYear { get; set; }
@@ -87,7 +99,7 @@ namespace Void.EXStremio.Web.Models {
         public string[] Genres { get; set; }
 
         [JsonPropertyName("releaseInfo")]
-        public long ReleaseInfo { get; set; }
+        public string ReleaseInfo { get; set; }
 
         [JsonPropertyName("trailerStreams")]
         public TrailerStream[] TrailerStreams { get; set; }
@@ -97,6 +109,8 @@ namespace Void.EXStremio.Web.Models {
 
         [JsonPropertyName("behaviorHints")]
         public BehaviorHints BehaviorHints { get; set; }
+        [JsonPropertyName("moviedb_id")]
+        public long TmdbId { get; set; }
     }
 
     public partial class BehaviorHints {

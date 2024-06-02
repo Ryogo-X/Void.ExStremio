@@ -24,10 +24,11 @@ namespace Void.EXStremio.Web.Controllers {
             }
             });
             id = id.Replace("kp", "").Replace(".json", "");
-            var provider = new KinopoiskProvider();
-            var item = await provider.Get(long.Parse(id));
+            //var provider = new KinopoiskProvider();
+            //var item = await provider.Get(long.Parse(id));
 
-            return new JsonResult(new { meta = item });
+            //return new JsonResult(new { meta = item });
+            return null;
         }
     }
 }

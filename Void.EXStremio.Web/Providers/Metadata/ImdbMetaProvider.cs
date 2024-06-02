@@ -3,11 +3,19 @@ using AngleSharp;
 using AngleSharp.Dom;
 
 namespace Void.EXStremio.Web.Providers.Metadata {
-    public class ImdbMetadataProvider {
-        public async Task<Meta> Get(string id) {
-            using (var client = new HttpClient()) {
-                client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
-                var url = "https://www.imdb.com/title/" + id;
+    public class ImdbMetaProvider : IAdditionalMetadataProvider {
+        public const string HTTP_CLIENT_KEY = "imdb";
+        readonly IHttpClientFactory httpClientFactory;
+        const string baseUri = "https://www.imdb.com/title/";
+
+        public ImdbMetaProvider(IHttpClientFactory httpClientFactory) {
+            this.httpClientFactory = httpClientFactory;
+        }
+
+        public async Task<ExtendedMeta?> GetAdditionalMetadataAsync(string type, string id) {
+            using (var client = httpClientFactory.CreateClient(HTTP_CLIENT_KEY)) {
+
+                var url = baseUri + id;
                 var html = await client.GetStringAsync(url);
 
                 var config = Configuration.Default.WithDefaultLoader();
@@ -18,18 +26,19 @@ namespace Void.EXStremio.Web.Providers.Metadata {
                 });
 
                 var years = GetYear(document);
-                return new Meta() {
+                return new ExtendedMeta() {
                     Id = id,
                     ImdbId = id,
                     Name = GetTitle(document),
                     OriginalName = GetOriginalTitle(document),
-                    Year = years.startYear,
+                    Year = years.startYear?.ToString(),
                     StartYear = years.startYear,
-                    EndYear = years.endYear
+                    EndYear = years.endYear,
+                    Type = IsSeries(document) ? "series" : "movie"
                 };
             }
         }
-
+        
         string GetTitle(IDocument document) {
             return document.QuerySelector("h1[data-testid=hero__pageTitle]").TextContent.Trim();
         }
@@ -53,6 +62,10 @@ namespace Void.EXStremio.Web.Providers.Metadata {
 
                 return (startYear > 0 ? startYear : null, null);
             }
+        }
+
+        bool IsSeries(IDocument document) {
+            return document.QuerySelectorAll(".ipc-inline-list__item").Any(x => x.Text().Trim() == "TV Series");
         }
     }
 }

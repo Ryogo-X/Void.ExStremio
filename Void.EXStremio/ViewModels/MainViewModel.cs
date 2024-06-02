@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Windows.Input;
 using Void.EXStremio.Models;
 using Void.EXStremio.Utility;
@@ -36,32 +33,6 @@ namespace Void.EXStremio.ViewModels {
             server.RunAsync();
         }
 
-        public partial class Resp {
-            [System.Text.Json.Serialization.JsonPropertyName("success")]
-            public bool Success { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("message")]
-            public string Message { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("url")]
-            public string Url { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("quality")]
-            public string Quality { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("subtitle")]
-            public bool Subtitle { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("subtitle_lns")]
-            public bool SubtitleLns { get; set; }
-
-            [System.Text.Json.Serialization.JsonPropertyName("subtitle_def")]
-            public bool SubtitleDef { get; set; }
-
-            //[System.Text.Json.Serialization.JsonPropertyName("thumbnails")]
-            //public string Thumbnails { get; set; }
-        }
-
         void InitializeWatcher(IConfig config) {
             watcher?.StopWatching();
             watcher = null;
@@ -81,10 +52,14 @@ namespace Void.EXStremio.ViewModels {
                 appRoot.Exit += OnAppExit;
             }
 
+            if (watcher == null) { return; }
+
             watcher.ProcessExited -= OnStremioProcessExited;
             if (config.CloseWithStremio) {
                 watcher.ProcessExited += OnStremioProcessExited;
             }
+
+            config.InitializeEnvironmentVariables();
         }
 
         void OnStremioProcessExited() {

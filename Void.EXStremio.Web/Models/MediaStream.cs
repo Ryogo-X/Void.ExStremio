@@ -1,4 +1,8 @@
-﻿namespace Void.EXStremio.Web.Models {
+﻿using static Void.EXStremio.Web.Providers.Stream.HdRezkaApi;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace Void.EXStremio.Web.Models {
     public enum Platform {
         Android,
         iOS
@@ -23,7 +27,7 @@
 
     }
 
-    public class Stream {
+    public class MediaStream {
         public string Url { get; set; }
         public string YtId { get; set; }
         public string InfoHash { get; set; }
@@ -44,5 +48,14 @@
         public bool? Repeat { get; set; }
         public string[] Geos { get; set; }
         public object Meta { get; set; }
+
+        public string GetOriginalUrl() {
+            var uri = Regex.Match(Url ?? "", "/stream/play/(?<uri>[^?]+)\\?").Groups["uri"].Value;
+            if (!string.IsNullOrEmpty(uri)) {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(uri));
+            }
+
+            return Url;
+        }
     }
 }
