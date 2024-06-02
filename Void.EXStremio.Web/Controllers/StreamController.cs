@@ -46,7 +46,11 @@ namespace Void.EXStremio.Web.Controllers {
                 if (string.IsNullOrWhiteSpace(kpId)) {
                     var kpIdProviders = HttpContext.RequestServices.GetServices<IKinopoiskIdProvider>();
                     foreach (var kpIdProvider in kpIdProviders) {
-                        kpId = await kpIdProvider.GetKinopoiskIdAsync(id);
+                        try {
+                            kpId = await kpIdProvider.GetKinopoiskIdAsync(id);
+                        } catch {
+                            // TODO: logging?
+                        }
 
                         if (!string.IsNullOrWhiteSpace(kpId)) { break; }
                     }
