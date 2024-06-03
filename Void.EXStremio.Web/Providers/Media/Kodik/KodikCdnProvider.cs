@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
 using Void.EXStremio.Web.Providers.Media.Kodik.Models;
@@ -20,7 +21,8 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
 
         readonly KodikConfig config;
 
-        const string baseSearchUri = "https://kodikapi.com/search?token=[token]&kinopoisk_id=[id]&with_episodes=true";
+        const string baseSearchImdbUri = "https://kodikapi.com/search?token=[token]&imdb_id=[id]&with_episodes=true";
+        const string baseSearchKpUri = "https://kodikapi.com/search?token=[token]&kinopoisk_id=[id]&with_episodes=true";
 
         readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
         readonly string CACHE_KEY_API_SEARCH_KP;
@@ -57,7 +59,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
             var searchResponse = cache.Get<KodikSearchResponse>(ckSearchImdb);
             if (searchResponse == null) {
                 using (var client = GetHttpClient()) {
-                    var uriString = baseSearchUri
+                    var uriString = baseSearchImdbUri
                                         .Replace("[token]", config.ApiKey)
                                         .Replace("[id]", imdbId);
 
@@ -96,7 +98,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
             var searchResponse = cache.Get<KodikSearchResponse>(ckSearchKp);
             if (searchResponse == null) {
                 using (var client = GetHttpClient()) {
-                    var uriString = baseSearchUri
+                    var uriString = baseSearchKpUri
                                         .Replace("[token]", config.ApiKey)
                                         .Replace("[id]", id);
 
@@ -114,20 +116,21 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
 
             MediaStream[] mediaStreams = [];
             foreach (var responseItem in searchResponse.Results) {
-                var iframeUri = "https:" + responseItem.Link;
+                var iframeUri = new Uri("https:" + responseItem.Link);
                 if (season.HasValue && episode.HasValue) {
                     var episodeLink = responseItem.Seasons
                         .FirstOrDefault(x => x.Key == season.ToString()).Value?
                         .Episodes.FirstOrDefault(x => x.Key == episode.ToString()).Value;
                     if (string.IsNullOrWhiteSpace(episodeLink)) { continue; }
 
-                    iframeUri = $"http:{episodeLink}?season={season}&episode={episode}";
+                    //iframeUri = $"http:{episodeLink}?season={season}&episode={episode}";
+                    iframeUri = new Uri($"http:{episodeLink}");
                 }
 
                 var ckStreams = CACHE_KEY_STREAMS
                     .Replace("[uri]", iframeUri.ToString())
                     .Replace("[season]", season?.ToString())
-                    .Replace("[episode]", season?.ToString());
+                    .Replace("[episode]", episode?.ToString());
                 mediaStreams = cache.Get<MediaStream[]>(ckStreams);
                 if (mediaStreams == null) {
                     mediaStreams = await GetStreams(iframeUri, season, episode);
@@ -195,7 +198,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
             return mediaStreams.ToArray();
         }
 
-        public Task<IMediaSource> GetMedia(MediaLink link) {
+        public Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
             throw new NotImplementedException();
         }
     }

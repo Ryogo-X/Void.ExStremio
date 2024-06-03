@@ -1,4 +1,5 @@
-﻿using Void.EXStremio.Web.Models.Kinopoisk;
+﻿using System.Net.Http.Headers;
+using Void.EXStremio.Web.Models.Kinopoisk;
 using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Models {
@@ -28,6 +29,6 @@ namespace Void.EXStremio.Web.Models {
         bool CanHandle(string id);
         bool CanHandle(MediaLink link);
         Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null);
-        Task<IMediaSource> GetMedia(MediaLink link);
+        Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null);
     }
 }

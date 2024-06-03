@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Net.Http.Headers;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -101,7 +102,7 @@ namespace Void.EXStremio.Web.Providers.Media.Collaps {
             var ckStreams = CACHE_KEY_STREAMS
                 .Replace("[uri]", iframeUri.ToString())
                 .Replace("[season]", season?.ToString())
-                .Replace("[episode]", season?.ToString());
+                .Replace("[episode]", episode?.ToString());
             var mediaStreams = cache.Get<MediaStream[]>(ckStreams);
             if (mediaStreams != null) {  return mediaStreams; }
 
@@ -184,7 +185,7 @@ namespace Void.EXStremio.Web.Providers.Media.Collaps {
             return mediaStreams;
         }
 
-        public async Task<IMediaSource> GetMedia(MediaLink link) {
+        public async Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
             var mimeType = MediaMimeType.GetMimeType(link.FormatType);
 
             var ckPlaylist = CACHE_KEY_PLAYLIST

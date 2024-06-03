@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -182,14 +185,36 @@ namespace Void.EXStremio.Web.Controllers {
                 throw new InvalidDataException("No provider found to handle the request.");
             }
 
-            var media = await mediaProvider.GetMedia(mediaLink);
+            RangeHeaderValue rangeHeader = null;
+            if (Request.Headers.ContainsKey("Range")) {
+                rangeHeader = new RangeHeaderValue();
+                foreach (var rangeString in Request.Headers.Range) {
+                    var range = rangeString.Replace("bytes=", "").Split('-', StringSplitOptions.RemoveEmptyEntries);
+                    rangeHeader.Ranges.Add(new RangeItemHeaderValue(long.Parse(range[0]), range.Length > 1 ? long.Parse(range[1]) : null));
+                }
+            }
+
+            var media = await mediaProvider.GetMedia(mediaLink, rangeHeader);
+
+            FileResult file = null;
             if (media is StreamMediaSource streamMedia) {
-                return File(streamMedia.Stream, streamMedia.ContentType, true);
+                file = File(streamMedia.Stream, streamMedia.ContentType, true);
+
+                if (!string.IsNullOrWhiteSpace(streamMedia.AcceptRanges)) {
+                    Response.Headers.Append("Accept-Ranges", streamMedia.AcceptRanges);
+                }
+                if (!string.IsNullOrWhiteSpace(streamMedia.ContentRange)) {
+                    Response.Headers.Append("Content-Range", streamMedia.ContentRange);
+                    Response.StatusCode = (int)HttpStatusCode.PartialContent;
+                }
+                Response.Headers.Append("Content-Length", streamMedia.ContentLength.ToString());
             } else if (media is PlaylistMediaSource playlistMedia) {
-                return File(playlistMedia.Content, playlistMedia.ContentType);
+                file = File(playlistMedia.Content, playlistMedia.ContentType);
             } else {
                 throw new InvalidDataException("Uknown media type.");
             }
+
+            return file;
 
             //var isRangeRequest = Request.Headers.ContainsKey("Range");
 

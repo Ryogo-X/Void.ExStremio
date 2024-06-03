@@ -10,6 +10,8 @@
     class StreamMediaSource : IMediaSource {
         public Stream Stream { get; }
         public long ContentLength { get; }
+        public string AcceptRanges { get; set; }
+        public string ContentRange { get; set; }
 
         public StreamMediaSource(string contentType, Stream stream, long contentLength) : base(contentType) {
             Stream = stream;

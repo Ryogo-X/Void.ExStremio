@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
 using Void.EXStremio.Web.Providers.Media.Hdvb.Models;
@@ -86,7 +87,7 @@ namespace Void.EXStremio.Web.Providers.Media.Hdvb {
             var ckStreams = CACHE_KEY_STREAMS
                 .Replace("[uri]", iframeUri.ToString())
                 .Replace("[season]", season?.ToString())
-                .Replace("[episode]", season?.ToString());
+                .Replace("[episode]", episode?.ToString());
             var mediaStreams = cache.Get<MediaStream[]>(ckStreams);
             if (mediaStreams != null) { return mediaStreams; }
 
@@ -158,7 +159,7 @@ namespace Void.EXStremio.Web.Providers.Media.Hdvb {
             }
         }
 
-        Task<IMediaSource> IMediaProvider.GetMedia(MediaLink link) {
+        Task<IMediaSource> IMediaProvider.GetMedia(MediaLink link, RangeHeaderValue range = null) {
             throw new NotImplementedException();
         }
     }

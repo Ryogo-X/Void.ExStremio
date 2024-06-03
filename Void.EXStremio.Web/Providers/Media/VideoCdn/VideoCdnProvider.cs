@@ -1,4 +1,7 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
+using AngleSharp.Dom;
+using AngleSharp.Io;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -92,6 +95,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
 
         public bool CanHandle(MediaLink link) {
             if (link.SourceType.ToUpperInvariant() != ServiceName.ToUpperInvariant()) { return false; }
+            if (link.FormatType != MediaFormatType.MP4) { return false; }
 
             return true;
         }
@@ -177,7 +181,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                         foreach (var link in links) {
                             var mediaStream = new MediaStream() {
                                 Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}p]",
-                                Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Direct).ToString(),
+                                Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Proxy).ToString(),
                                 Title = $"Episode {episode?.ToString("000")}\n{translation}"
                             };
                             mediaStreams.Add(mediaStream);
@@ -193,7 +197,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                         foreach (var link in links) {
                             var mediaStream = new MediaStream() {
                                 Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}p]",
-                                Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Direct).ToString(),
+                                Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Proxy).ToString(),
                                 Title = $"\n{translation}"
                             };
                             mediaStreams.Add(mediaStream);
@@ -214,8 +218,29 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
             }
         }
 
-        public Task<IMediaSource> GetMedia(MediaLink link) {
-            throw new NotImplementedException();
+        public async Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
+            if (link.FormatType != MediaFormatType.MP4) { throw new NotSupportedException($"[{ServiceName}] fomat '{link.FormatType}' not supported."); }
+
+            using(var client = GetHttpClient()) {
+                var message = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, link.SourceUri);
+                message.Headers.Range = range;
+
+                var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode) {
+                    // TODO: logging
+                    return null;
+                }
+
+                var contentType = response.Content.Headers.ContentType.ToString();
+                var stream = await response.Content.ReadAsStreamAsync();
+                var contentLength = response.Content.Headers.ContentLength.Value;
+
+                return new StreamMediaSource(contentType, stream, contentLength) {
+                    AcceptRanges = response.Headers.AcceptRanges?.FirstOrDefault()?.ToString(),
+                    ContentRange = response.Content.Headers.ContentRange?.ToString()
+                };
+            }
+
         }
         #endregion
     }
