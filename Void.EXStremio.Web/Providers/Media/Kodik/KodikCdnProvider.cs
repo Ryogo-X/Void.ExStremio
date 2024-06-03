@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -114,7 +115,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
                 }
             }
 
-            MediaStream[] mediaStreams = [];
+            var streams = new List<MediaStream>();
             foreach (var responseItem in searchResponse.Results) {
                 var iframeUri = new Uri("https:" + responseItem.Link);
                 if (season.HasValue && episode.HasValue) {
@@ -131,7 +132,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
                     .Replace("[uri]", iframeUri.ToString())
                     .Replace("[season]", season?.ToString())
                     .Replace("[episode]", episode?.ToString());
-                mediaStreams = cache.Get<MediaStream[]>(ckStreams);
+                var mediaStreams = cache.Get<MediaStream[]>(ckStreams);
                 if (mediaStreams == null) {
                     mediaStreams = await GetStreams(iframeUri, season, episode);
                     foreach (var mediaStream in mediaStreams) {
@@ -144,9 +145,10 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
 
                     cache.Set(ckStreams, mediaStreams, DEFAULT_EXPIRATION);
                 }
+                streams.AddRange(mediaStreams);
             }
 
-            return mediaStreams;
+            return streams.ToArray();
         }
 
         async Task<MediaStream[]> GetStreams(Uri iframeUri, int? season = null, int? episode = null) {
