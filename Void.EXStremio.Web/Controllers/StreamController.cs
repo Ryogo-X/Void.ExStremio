@@ -194,76 +194,16 @@ namespace Void.EXStremio.Web.Controllers {
                 stream.Url = UrlBuilder.AbsoluteUrl(Request, stream.Url).ToString();
             }
 
+            // add binge groups
+            foreach (var stream in streams) {
+                stream.BehaviorHints = new BehaviorHints() {
+                    BingeGroup = $"exstremio | {stream.GetCdnSource()} | {stream.GetQuality()} | {stream.GetTranslation()}"
+                };
+            }
+
             return new JsonResult(new {
                 streams = streams
             });
-
-            //var catalogProvider = new KinopoiskCatalogProvider(httpClientFactory);
-            //var catalogResponse = await catalogProvider.GetAsync(type, meta.OriginalName ?? meta.Name);
-
-            //var kpMeta = catalogResponse
-            //    .Metas
-            //    .FirstOrDefault(x => {
-            //        return x.IsMatch(meta);
-            //    });
-
-            //if (kpMeta == null && meta.TmdbId > 0) {
-            //    var tmdbMetaProvider = new TmdbMetaProvider(httpClientFactory);
-            //    var tmdbMeta = await tmdbMetaProvider.GetAsync(type, "tmdb" + meta.TmdbId.ToString());
-
-            //    kpMeta = catalogResponse
-            //        .Metas
-            //        .FirstOrDefault(x => {
-            //            return x.IsMatch(tmdbMeta);
-            //        });
-            //}
-
-            //if (kpMeta == null) {
-            //    var imdbProvider = new ImdbMetaProvider(httpClientFactory);
-            //    var imdbMeta = await imdbProvider.GetAsync(type, id);
-
-            //    kpMeta = catalogResponse
-            //        .Metas
-            //        .FirstOrDefault(x => {
-            //            return x.IsMatch(imdbMeta);
-            //        });
-            //}
-
-            //if (kpMeta == null) {
-            //    throw new InvalidOperationException($"Cannot find Kinopoisk ID for '{id}'");
-            //}
-
-            //var fbMediaProvider = new FlicksbarMediaProvider();
-            //var streams = await fbMediaProvider.GetStreams(kpMeta.KpId, season, episode);
-            //streams.ToString();
-
-            //foreach (var stream in streams) {
-            //    if (stream.Url.StartsWith("http")) { continue; }
-
-            //    stream.Url = UrlBuilder.AbsoluteUrl(Request, stream.Url).ToString();
-            //}
-
-            //return new JsonResult(new {
-            //    streams = streams
-            //});
-
-            //id = id.Replace(".json", "");
-            //var parts = id.Split(':', StringSplitOptions.RemoveEmptyEntries);
-            //id = parts[0];
-            //var season = parts.Length > 1 ? int.Parse(parts[1]) : (int?)null;
-            //var episode = parts.Length > 1 ? int.Parse(parts[2]) : (int?)null;
-
-            //var metaProvider = new ImdbMetadataProvider();
-            //var meta = await metaProvider.Get(id);
-            //meta.Type = type;
-
-            //var streamProvider = new HdRezkaStreamProvider();
-            //var streams = await streamProvider.Get(meta, season, episode);
-
-            //foreach(var stream in streams) {
-            //    var encodedUrl = Convert.ToBase64String(Encoding.UTF8.GetBytes(stream.Url));
-            //    stream.Url = UrlBuilder.AbsoluteUrl(Request, "/stream/play/" + encodedUrl).ToString();
-            //}
         }
 
         [HttpGet("/stream/play/{encodedUrl}")]

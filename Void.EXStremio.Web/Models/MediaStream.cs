@@ -48,6 +48,8 @@ namespace Void.EXStremio.Web.Models {
         public string[] Geos { get; set; }
         public object Meta { get; set; }
 
+        public BehaviorHints BehaviorHints { get; set; }
+
         public string GetOriginalUrl() {
             var uri = Regex.Match(Url ?? "", "/stream/play/(?<uri>[^?]+)\\?").Groups["uri"].Value;
             if (!string.IsNullOrEmpty(uri)) {
@@ -56,5 +58,40 @@ namespace Void.EXStremio.Web.Models {
 
             return Url;
         }
+
+        // TODO: add explicit field for this
+        public string GetCdnSource() {
+            if (string.IsNullOrWhiteSpace(Name)) { return null; }
+
+            var parts = Name.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            return parts[0];
+        }
+
+        // TODO: add explicit field for this
+        public string GetQuality() {
+            if (string.IsNullOrWhiteSpace(Name)) { return null; }
+
+            var parts = Name.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            return parts[1];
+        }
+
+        // TODO: add explicit field for this
+        public string GetTranslation() {
+            if (string.IsNullOrWhiteSpace(Title)) { return null; }
+
+            var parts = Title.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length > 1) {
+                return parts.Last();
+            } else if (!parts.First().Contains("Episode")) {
+                return parts.First();
+            }
+
+            return "DEFAULT";
+        }
+    }
+
+    public partial class BehaviorHints {
+        public string BingeGroup { get; set; }
+        public string Filename { get; set; }
     }
 }
