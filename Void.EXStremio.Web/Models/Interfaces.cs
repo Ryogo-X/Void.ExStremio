@@ -26,7 +26,7 @@ namespace Void.EXStremio.Web.Models {
 
     interface ICustomIdProvider {
         bool CanGetCustomId(ExtendedMeta meta);
-        Task<CustomIdResult> GetCustomId(ExtendedMeta meta);
+        Task<CustomIdResult[]> GetCustomIds(ExtendedMeta meta);
     }
 
     interface IMediaProvider {

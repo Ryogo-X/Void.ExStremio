@@ -119,21 +119,6 @@ namespace Void.EXStremio.Web {
                 httpClient.DefaultRequestHeaders.Add("Service-Id", "76");
             });
 
-            // IMediaProvider / IKinopoiskIdProvider
-            var kodikApiKey = Environment.GetEnvironmentVariable(KodikConfig.CONFIG_API_KEY);
-            if (!string.IsNullOrEmpty(kodikApiKey)) {
-                serviceCollection.AddSingleton(_ => new KodikConfig(kodikApiKey));
-                serviceCollection.AddSingleton<IKinopoiskIdProvider, KodikCdnProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, KodikCdnProvider>();
-                serviceCollection.AddHttpClient(nameof(KodikCdnProvider), httpClient => {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
-                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
-                    httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
-                });
-            } else {
-                logger?.LogWarning("[INIT] KODIK provider not initialized - api key is missing.");
-            }
-
             var videoCdnApiKey = Environment.GetEnvironmentVariable(VideoCdnConfig.CONFIG_API_KEY);
             if (!string.IsNullOrEmpty(videoCdnApiKey)) {
                 serviceCollection.AddSingleton(_ => new VideoCdnConfig(videoCdnApiKey));
@@ -199,6 +184,20 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddSingleton<IMediaProvider, CdnMoviesCdnProvider>();
             } else {
                 logger?.LogWarning("[INIT] CdnMovies provider not initialized - api key is missing.");
+            }
+
+            var kodikApiKey = Environment.GetEnvironmentVariable(KodikConfig.CONFIG_API_KEY);
+            if (!string.IsNullOrEmpty(kodikApiKey)) {
+                serviceCollection.AddSingleton(_ => new KodikConfig(kodikApiKey));
+                serviceCollection.AddSingleton<IKinopoiskIdProvider, KodikCdnProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, KodikCdnProvider>();
+                serviceCollection.AddHttpClient(nameof(KodikCdnProvider), httpClient => {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                    httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
+                });
+            } else {
+                logger?.LogWarning("[INIT] KODIK provider not initialized - api key is missing.");
             }
 
             var ashdiApiKey = Environment.GetEnvironmentVariable(AshdiConfig.CONFIG_API_KEY);

@@ -101,7 +101,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                 using (var client = GetHttpClient()) {
                     var response = await client.GetAsync(uriString);
                     if (!response.IsSuccessStatusCode) {
-                        cache.Set(ckSearchKp, new KodikSearchResponse() { Results = [] }, DEFAULT_EXPIRATION);
+                        cache.Set(ckSearchKp, new CdnMoviesSearchResponse() { Data = [] }, DEFAULT_EXPIRATION);
                         // TODO: logging?
                         return [];
                     }
@@ -137,15 +137,17 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                         // type.Contains("сериал")
                         var data = await JsonSerializerExt.DeserializeAsync<CdnMoviesTvSeasonResponse[]>(json);
                         var episodeItem = data.FirstOrDefault(x => x.GetNumber() == season.Value)?.Episodes?.FirstOrDefault(x => x.GetNumber() == episode.Value);
-                        foreach (var item in episodeItem.Links) {
-                            var mediaLinks = item.GetLinks();
-                            foreach (var mediaLink in mediaLinks) {
-                                var mediaStream = new MediaStream() {
-                                    Name = $"[{ServiceName.ToUpperInvariant()}]\n[{mediaLink.Quality}p]",
-                                    Title = $"Episode {episode?.ToString("000")}\n{item.Title}",
-                                    Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Direct).GetUri().ToString()
-                                };
-                                newMediaStreams.Add(mediaStream);
+                        if (episodeItem != null) {
+                            foreach (var item in episodeItem.Links) {
+                                var mediaLinks = item.GetLinks();
+                                foreach (var mediaLink in mediaLinks) {
+                                    var mediaStream = new MediaStream() {
+                                        Name = $"[{ServiceName.ToUpperInvariant()}]\n[{mediaLink.Quality}p]",
+                                        Title = $"Episode {episode?.ToString("000")}\n{item.Title}",
+                                        Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Direct).GetUri().ToString()
+                                    };
+                                    newMediaStreams.Add(mediaStream);
+                                }
                             }
                         }
                     } else {

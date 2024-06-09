@@ -45,40 +45,41 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             return meta.Id?.StartsWith(IMDB_PREFIX) == true;
         }
 
-        public async Task<CustomIdResult> GetCustomId(ExtendedMeta meta) {
+        public async Task<CustomIdResult[]> GetCustomIds(ExtendedMeta meta) {
             if (!CanGetCustomId(meta)) { throw new NotSupportedException($"{ServiceName} cannot get custom id for meta.id: {meta.Id}"); }
 
             var ckId = CACHE_KEY_ITEM_EXT_ID.Replace("[id]", meta.Id);
-            var customId = cache.Get<CustomIdResult>(ckId);
-            if (customId == null) {
-                customId = await GetCustomId(meta.Name, meta.Id, meta.GetYear());
-                if (customId == null) {
-                    var localizedTitle = meta.LocalizedTitles.FirstOrDefault(x => x.LangCode == "ru")?.Title;
-                    if (!string.IsNullOrWhiteSpace(localizedTitle)) {
-                        customId = await GetCustomId(localizedTitle, meta.Id, meta.GetYear());
-                    }
+            var customIds = cache.Get<CustomIdResult[]>(ckId);
+            if (customIds?.Any() != true) {
+                var localizedTitle = meta.LocalizedTitles.FirstOrDefault(x => x.LangCode == "ru")?.Title;
+                if (!string.IsNullOrWhiteSpace(localizedTitle)) {
+                    customIds = await GetCustomIds(localizedTitle, meta.Id, meta.GetYear());
+                }
+                if (customIds?.Any() != true) {
+                    customIds = await GetCustomIds(meta.Name, meta.Id, meta.GetYear());
                 }
             }
 
-            return customId;
+            return customIds;
         }
 
-        async Task<CustomIdResult> GetCustomId(string searchTitle, string imdbId, int? year) {
+        async Task<CustomIdResult[]> GetCustomIds(string searchTitle, string imdbId, int? year) {
             var items = await apiClient.Search(searchTitle);
             var matchedItems = items.Where(item => {
-                var isTitleMatch = item.Titles.Any(title => MediaNameSimilarity.Calculate(searchTitle, title) >= 90);
+                var isTitleMatch = item.GetSanitizedTitles().Any(title => MediaNameSimilarity.Calculate(searchTitle, title) >= 90);
                 var isAdditionalTitleMatch = item.AdditionalTitles.Any(title => MediaNameSimilarity.Calculate(searchTitle, title) >= 90);
 
                 return isTitleMatch || isAdditionalTitleMatch;
             });
 
-            if (year.HasValue) {
-                var itemsMatchedByYear = matchedItems.Where(x => x.StartYear == year.Value);
-                if (itemsMatchedByYear.Any()) {
-                    matchedItems = itemsMatchedByYear;
-                }
-            }
+            //if (year.HasValue) {
+            //    var itemsMatchedByYear = matchedItems.Where(x => x.StartYear == year.Value);
+            //    if (itemsMatchedByYear.Any()) {
+            //        matchedItems = itemsMatchedByYear;
+            //    }
+            //}
 
+            var customIds = new List<CustomIdResult>();
             foreach (var item in matchedItems) {
                 var ckMeta = CACHE_KEY_ITEM_METADATA.Replace("[uri]", item.Url.ToString());
                 var newMeta = cache.Get<HdRezkaApi.HdRezkaMetadata>(ckMeta);
@@ -88,11 +89,14 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
                 }
 
                 if (imdbId == newMeta.ImdbId) {
-                    return new CustomIdResult(PREFIX + item.Url.PathAndQuery, DEFAULT_EXPIRATION);
+                    var customId = new CustomIdResult(PREFIX + item.Url.PathAndQuery, DEFAULT_EXPIRATION);
+                    customIds.Add(customId);
+
+                    if (newMeta.IsStandaloneTitle()) { break; }
                 }
             }
 
-            return null;
+            return customIds.ToArray();
         }
         #endregion
 
@@ -111,6 +115,7 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
                 meta = await apiClient.GetMetadata(uri);
                 cache.Set(ckMeta, meta, DEFAULT_EXPIRATION);
             }
+            if (season.HasValue && episode.HasValue && !meta.IsStandaloneTitle() && meta.GetTvSeason() != season) { return []; }
 
             var ckStreams = CACHE_KEY_STREAMS
                 .Replace("[id]", id)

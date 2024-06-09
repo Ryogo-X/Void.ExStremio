@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Collections.Generic;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using AngleSharp.Io;
@@ -134,23 +135,20 @@ namespace Void.EXStremio.Web.Controllers {
                             var ckMapping = CACHE_KEY_ID_MAPPING
                                 .Replace("[type]", provider.GetType().Name)
                                 .Replace("[id]", imdbId);
-                            var id = cache.Get<string>(ckMapping);
-                            if (string.IsNullOrWhiteSpace(id)) {
-                                var customId = await provider.GetCustomId(meta);
-                                if (customId == null) { return; }
+                            var customIds = cache.Get<CustomIdResult[]>(ckMapping);
+                            if (customIds == null) {
+                                customIds = await provider.GetCustomIds(meta);
+                                customIds ??= [];
 
-                                if (!customId.Expiration.HasValue) {
-                                    cache.Set(ckMapping, customId.Id);
+                                if (!customIds.First().Expiration.HasValue) {
+                                    cache.Set(ckMapping, customIds);
                                 } else {
-                                    cache.Set(ckMapping, customId.Id, customId.Expiration.Value);
+                                    cache.Set(ckMapping, customIds, customIds.First().Expiration.Value);
                                 }
-                                lock (ids) {
-                                    ids.Add(customId.Id);
-                                }
-                            } else {
-                                lock (ids) {
-                                    ids.Add(id);
-                                }
+                            }
+
+                            lock (ids) {
+                                ids.AddRange(customIds.Select(x => x.Id));
                             }
                         });
                     }

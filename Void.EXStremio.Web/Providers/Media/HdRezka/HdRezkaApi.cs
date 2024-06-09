@@ -304,9 +304,37 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             return document;
         }
 
-        public record HdRezkaSearchResult(Uri Url, string[] Titles, string[] AdditionalTitles, int StartYear, int? EndYear, HdRezkaMediaType Type);
+        public record HdRezkaSearchResult(Uri Url, string[] Titles, string[] AdditionalTitles, int StartYear, int? EndYear, HdRezkaMediaType Type) {
+            public IEnumerable<string> GetSanitizedTitles() {
+                foreach(var title in Titles) {
+                    yield return title;
 
-        public record HdRezkaMetadata(string ImdbId, string KpId, string Title, string OriginalTitle, HdRezkaMediaType Type, HdRezkaDetails[] Details);
+                    if (!IsStandaloneTitle(title)) {
+                        yield return Regex.Replace(title, @"\[ТВ-[0-9]+\]", "");
+                    }
+
+                    if (title.Contains(':')) {
+                        yield return title.Split(':').First();
+                    }
+                }
+            }
+
+            public bool IsStandaloneTitle(string title) {
+                return !Regex.IsMatch(title, @"\[ТВ-[0-9]+\]");
+            }
+        }
+
+        public record HdRezkaMetadata(string ImdbId, string KpId, string Title, string OriginalTitle, HdRezkaMediaType Type, HdRezkaDetails[] Details) {
+            public bool IsStandaloneTitle() {
+                return !Regex.IsMatch(Title, @"\[ТВ-[0-9]+\]");
+            }
+
+            public int GetTvSeason() {
+                var valueString = Regex.Match(Title, @"\[ТВ-(?<value>[0-9]+)\]").Groups["value"].Value;
+
+                return int.Parse(valueString);
+            }
+        }
 
         public record HdRezkaDetails(string Title, int Id, int TranslatorId, bool? IsCamrip = null, bool? HasAds = null, bool? IsDirectorCut = null);
 
