@@ -24,6 +24,10 @@ namespace Void.EXStremio.Web.Providers.Metadata {
             this.config = config;
         }
 
+        public bool CanGetAdditionalMetadata(string id) {
+            return id.StartsWith(PREFIX);
+        }
+
         public async Task<ExtendedMeta?> GetAdditionalMetadataAsync(string type, string id) {
             if (!id.StartsWith(PREFIX)) { throw new InvalidOperationException($"Identifier {id} is not supported by TMDB metadata provider"); }
 
@@ -48,13 +52,24 @@ namespace Void.EXStremio.Web.Providers.Metadata {
 
                 var meta = new ExtendedMeta();
                 meta.Name = response.Title;
-                meta.OriginalName = response.OriginalTitle;
+                // TODO: FIX?
+                //meta.OriginalName = response.OriginalTitle;
                 meta.Year = response.ReleaseDate.Year.ToString();
                 meta.Type = "movie";
                 meta.TmdbId = response.Id;
                 meta.ImdbId = response.ExternalIds.ImdbId;
-                meta.AlternativeTitles = response.AlternativeTitles?.Titles?.Select(x => x.Title)?.ToArray();
-                meta.LocalizedTitles = response.Translations?.Translations?.Select(x => x.Data.Title).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+                var altTitles = response.AlternativeTitles
+                    ?.Titles
+                    ?.Select(x => x.Title)?.ToArray() 
+                    ?? [];
+                meta.AlternativeTitles.AddRange(altTitles);
+                var localizedTitles = response.Translations?
+                    .Translations
+                    ?.Where(x => !string.IsNullOrWhiteSpace(x.Data.Title))
+                    ?.Select(x => new LocalizedTitle(x.CountryCode, x.Data.Title))
+                    ?.ToArray() 
+                    ?? [];
+                meta.LocalizedTitles.AddRange(localizedTitles);
 
                 return meta;
             } else if (type == "series") {
@@ -62,15 +77,27 @@ namespace Void.EXStremio.Web.Providers.Metadata {
 
                 var meta = new ExtendedMeta();
                 meta.Name = response.Title;
-                meta.OriginalName = response.OriginalTitle;
+                // TODO: FIX?
+                //meta.OriginalName = response.OriginalTitle;
                 meta.Year = response.StartDate.Value.Year.ToString();
                 meta.StartYear = response.StartDate.HasValue ? response.StartDate.Value.Year : null;
                 meta.EndYear = response.EndDate.HasValue ? response.EndDate.Value.Year : null;
                 meta.Type = "series";
                 meta.TmdbId = response.Id;
                 meta.ImdbId = response.ExternalIds.ImdbId;
-                meta.AlternativeTitles = response.AlternativeTitles?.Results?.Select(x => x.Title)?.ToArray();
-                meta.LocalizedTitles = response.Translations?.Translations?.Select(x => x.Data.Name).Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+                var altTitles = response.AlternativeTitles
+                    ?.Results
+                    ?.Select(x => x.Title)
+                    ?.ToArray()
+                    ?? [];
+                meta.AlternativeTitles.AddRange(altTitles);
+                var localizedTitles = response.Translations?
+                    .Translations
+                    ?.Where(x => !string.IsNullOrWhiteSpace(x.Data.Name))
+                    ?.Select(x => new LocalizedTitle(x.CountryCode, x.Data.Name))
+                    ?.ToArray()
+                    ?? [];
+                meta.LocalizedTitles.AddRange(localizedTitles);
 
                 return meta;
             }

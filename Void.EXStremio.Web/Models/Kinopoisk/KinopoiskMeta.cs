@@ -14,13 +14,12 @@ namespace Void.EXStremio.Web.Models.Kinopoisk {
             if (Year != meta.Year) { return false; }
 
             var isNameMatch = MediaNameSimilarity.Calculate(meta.Name, Name) >= 90;
-            var isOriginalNameMatch = MediaNameSimilarity.Calculate(meta.OriginalName, Name) >= 90;
             var isAlternativeNameMatch = meta.AlternativeTitles?.Any(y => MediaNameSimilarity.Calculate(y, Name) >= 90) == true;
             var isLocalizedNameMatch =
-                meta?.LocalizedTitles?.Any(y => MediaNameSimilarity.Calculate(y, Name) >= 90) == true
-                || (LocalizedTitles?.Any() == true && meta?.LocalizedTitles?.Any(y => MediaNameSimilarity.Calculate(y, LocalizedTitles[0]) >= 90) == true);
+                meta?.LocalizedTitles?.Any(y => MediaNameSimilarity.Calculate(y.Title, Name) >= 90) == true
+                || (LocalizedTitles?.Any() == true && meta?.LocalizedTitles?.Any(y => MediaNameSimilarity.Calculate(y.Title, LocalizedTitles.First().Title) >= 90) == true);
 
-            return (isNameMatch || isOriginalNameMatch || isAlternativeNameMatch || isLocalizedNameMatch);
+            return (isNameMatch || isAlternativeNameMatch || isLocalizedNameMatch);
         }
     }
 }

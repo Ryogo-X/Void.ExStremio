@@ -36,12 +36,12 @@ namespace Void.EXStremio.Web.Providers.Media.Hdvb {
             CACHE_KEY_STREAMS = $"{ServiceName}:STREAMS:[uri]:[season]:[episode]";
         }
 
-        public bool CanHandle(string id) {
+        public bool CanGetStreams(string id) {
             return id.StartsWith(PREFIX);
         }
 
-        public bool CanHandle(MediaLink link) {
-            throw new NotImplementedException();
+        public bool CanGetMedia(MediaLink link) {
+            return false;
         }
 
         public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {

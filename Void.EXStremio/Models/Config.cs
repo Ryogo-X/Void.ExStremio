@@ -3,7 +3,10 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Void.EXStremio.Web.Providers.Media.AllohaTv;
+using Void.EXStremio.Web.Providers.Media.Ashdi;
+using Void.EXStremio.Web.Providers.Media.CdnMovies;
 using Void.EXStremio.Web.Providers.Media.Collaps;
+using Void.EXStremio.Web.Providers.Media.HdRezka;
 using Void.EXStremio.Web.Providers.Media.Hdvb;
 using Void.EXStremio.Web.Providers.Media.Kodik;
 using Void.EXStremio.Web.Providers.Media.VideoCdn;
@@ -32,6 +35,9 @@ namespace Void.EXStremio.Models {
         public string AllohaTvApiKey { get; set; }
         public string CollapApiKey { get; set; }
         public string HdvbApiKey { get; set; }
+        public string CdnMoviesApiKey { get; set; }
+        public string AshdiApiKey { get; set; }
+        public Uri HdRezkaHostUri { get; set; }
 
         public static Config Load() {
             if (!File.Exists(path)) { return null; }
@@ -57,6 +63,9 @@ namespace Void.EXStremio.Models {
             Environment.SetEnvironmentVariable(AllohaTvConfig.CONFIG_API_KEY, AllohaTvApiKey);
             Environment.SetEnvironmentVariable(CollapsConfig.CONFIG_API_KEY, CollapApiKey);
             Environment.SetEnvironmentVariable(HdvbConfig.CONFIG_API_KEY, HdvbApiKey);
+            Environment.SetEnvironmentVariable(CdnMoviesConfig.CONFIG_API_KEY, CdnMoviesApiKey);
+            Environment.SetEnvironmentVariable(AshdiConfig.CONFIG_API_KEY, AshdiApiKey);
+            Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY, HdRezkaHostUri.ToString());
         }
     }
 }

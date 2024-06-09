@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
+using Void.EXStremio.Web.Providers.Media.CdnMovies;
 using Void.EXStremio.Web.Providers.Media.Kodik.Models;
 using Void.EXStremio.Web.Utility;
 
@@ -42,14 +43,12 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
             CACHE_KEY_STREAMS = $"{ServiceName}:STREAMS:[uri]:[season]:[episode]";
         }
 
-        public bool CanHandle(string id) {
+        public bool CanGetStreams(string id) {
             return id.StartsWith(PREFIX);
         }
 
-        public bool CanHandle(MediaLink link) {
-            if (link.SourceType.ToUpperInvariant() != ServiceName.ToUpperInvariant()) { return false; }
-
-            return true;
+        public bool CanGetMedia(MediaLink link) {
+            return false;
         }
 
         public async Task<string?> GetKinopoiskIdAsync(string imdbId) {
@@ -66,6 +65,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
 
                     var response = await client.GetAsync(uriString);
                     if (!response.IsSuccessStatusCode) {
+                        cache.Set(ckSearchImdb, new KodikSearchResponse() { Results = [] }, DEFAULT_EXPIRATION);
                         // TODO: logging?
                         return null;
                     }
@@ -105,6 +105,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
 
                     var response = await client.GetAsync(uriString);
                     if (!response.IsSuccessStatusCode) {
+                        cache.Set(ckSearchKp, new KodikSearchResponse() { Results = [] }, DEFAULT_EXPIRATION);
                         // TODO: logging?
                         return [];
                     }
@@ -114,6 +115,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
                     cache.Set(ckSearchKp, searchResponse, DEFAULT_EXPIRATION);
                 }
             }
+            if (!searchResponse.Results.Any()) { return []; }
 
             var streams = new List<MediaStream>();
             foreach (var responseItem in searchResponse.Results) {
@@ -182,8 +184,8 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
                     requestParams["id"] = vid;
                     requestParams["info"] = "{}";
                 }
-                var apiRespinse = await client.PostAsync("https://kodik.info/ftor", new FormUrlEncodedContent(requestParams));
-                var videoResponse = await apiRespinse.Content.ReadFromJsonAsync<KodikVideoSourceResponse>();
+                var apiResponse = await client.PostAsync("https://kodik.info/ftor", new FormUrlEncodedContent(requestParams));
+                var videoResponse = await apiResponse.Content.ReadFromJsonAsync<KodikVideoSourceResponse>();
                 foreach (var linkPair in videoResponse.Links) {
                     var quality = linkPair.Key;
                     foreach (var videoLink in linkPair.Value) {

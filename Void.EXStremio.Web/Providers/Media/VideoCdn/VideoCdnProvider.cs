@@ -1,7 +1,5 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
-using AngleSharp.Dom;
-using AngleSharp.Io;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -89,11 +87,11 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
         #endregion
 
         #region IMediaProvider
-        public bool CanHandle(string id) {
+        public bool CanGetStreams(string id) {
             return id.StartsWith(IMDB_PREFIX) || id.StartsWith(KP_PREFIX);
         }
 
-        public bool CanHandle(MediaLink link) {
+        public bool CanGetMedia(MediaLink link) {
             if (link.SourceType.ToUpperInvariant() != ServiceName.ToUpperInvariant()) { return false; }
             if (link.FormatType != MediaFormatType.MP4) { return false; }
 
@@ -240,7 +238,6 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                     ContentRange = response.Content.Headers.ContentRange?.ToString()
                 };
             }
-
         }
         #endregion
     }

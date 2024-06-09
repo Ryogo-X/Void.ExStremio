@@ -5,6 +5,7 @@ using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
+using Void.EXStremio.Web.Providers.Metadata;
 using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Controllers {
@@ -15,81 +16,159 @@ namespace Void.EXStremio.Web.Controllers {
         readonly IMemoryCache cache;
         readonly ILogger<StreamController> logger;
 
-        readonly string CACHE_KEY_MAPPING_IMDB_KP;
+        readonly string CACHE_KEY_ID_MAPPING;
+        readonly string CACHE_KEY_IMDB_META;
+        readonly string CACHE_KEY_IMDB_META_EXT;
 
         public StreamController(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) {
             this.httpClientFactory = httpClientFactory;
             this.cache = cache;
             this.logger = logger;
 
-            CACHE_KEY_MAPPING_IMDB_KP = $"MAPPINGS:IMDB:[imdb]";
+            CACHE_KEY_ID_MAPPING = $"MAPPINGS:[type]:[id]";
+            CACHE_KEY_IMDB_META = $"META:IMDB:[imdb]";
+            CACHE_KEY_IMDB_META_EXT = $"META:IMDB:EXT:[imdb]";
         }
 
         // TODO: enrich meta with data from Cinemeta / TMDB / IMBD
         //       after each enrich try to match with KP
         // GET /stream/movie/tt0032138
-        [HttpGet("/stream/{type}/{id}")]
-        public async Task<JsonResult> GetAsync(string type, string id) {
-            var parts = id.Replace(".json", "").Split(':');
+        [HttpGet("/stream/{type}/{sourceId}")]
+        public async Task<JsonResult> GetAsync(string type, string sourceId) {
+            var parts = sourceId.Replace(".json", "").Split(':');
 
-            id = parts[0];
+            sourceId = parts[0];
             int? season = null;
             int? episode = null;
             if (parts.Length > 1) {
                 season = int.Parse(parts[1]);
                 episode = int.Parse(parts[2]);
             }
+            var ids = new List<string> { sourceId };
 
-            string kpId = null;
-            if (id.StartsWith("tt")) {
-                var ckMapping = CACHE_KEY_MAPPING_IMDB_KP
-                    .Replace("[imdb]", id);
+            if (sourceId.StartsWith("tt")) {
+                var imdbId = sourceId;
+                ExtendedMeta meta = null;
 
-                kpId = cache.Get<string>(ckMapping);
-                if (string.IsNullOrWhiteSpace(kpId)) {
-                    var kpIdProviders = HttpContext.RequestServices.GetServices<IKinopoiskIdProvider>();
-                    foreach (var kpIdProvider in kpIdProviders) {
-                        try {
-                            kpId = await kpIdProvider.GetKinopoiskIdAsync(id);
-                        } catch {
-                            // TODO: logging?
+                // get IMDB meta
+                {
+                    var ckMeta = CACHE_KEY_IMDB_META.Replace("[imdb]", imdbId);
+                    meta = cache.Get<ExtendedMeta>(ckMeta);
+                    if (meta == null) {
+                        var metaProvider = HttpContext.RequestServices.GetService<IMetadataProvider>();
+                        meta = await metaProvider.GetMetadataAsync(type, imdbId);
+
+                        if (meta != null) {
+                            cache.Set(ckMeta, meta);
+                        } else {
+                            logger.LogError($"Cannot retrieve metadata for (id: {imdbId}, type: {type})");
+                        }  
+                    }
+                }
+
+                // get KP id
+                {
+                    var ckMapping = CACHE_KEY_ID_MAPPING
+                        .Replace("[type]", "imdb")
+                        .Replace("[id]", imdbId);
+                    var kpId = cache.Get<string>(ckMapping);
+                    if (string.IsNullOrWhiteSpace(kpId)) {
+                        var providers = HttpContext.RequestServices.GetServices<IKinopoiskIdProvider>();
+                        foreach (var provider in providers) {
+                            try {
+                                kpId = await provider.GetKinopoiskIdAsync(imdbId);
+                            } catch (Exception ex) {
+                                logger.LogError($"{provider.GetType().Name} error retrieving KP id.\n{ex}");
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(kpId)) { break; }
                         }
 
-                        if (!string.IsNullOrWhiteSpace(kpId)) { break; }
+                        if (!string.IsNullOrWhiteSpace(kpId)) {
+                            cache.Set(ckMapping, kpId);
+                            ids.Add(kpId);
+                        } else {
+                            logger.LogWarning($"[STREAM] Not able to retrieve KP id for (type: {type}, id: {imdbId})");
+                        }
+                    } else {
+                        ids.Add(kpId);
                     }
-                    if (string.IsNullOrWhiteSpace(kpId)) {
-                        return new JsonResult(new {
-                            error = $"[STREAM] Not able to retrieve KP id for (type: {type}, id: {id})"
-                        });
-                    }
-
-                    cache.Set(ckMapping, kpId);
                 }
-            } else if (id.StartsWith("kp")) {
-                kpId = id;
-            } else {
-                return new JsonResult(new { 
-                    error = $"Identifier '{id}' not supported."
-                });
+
+                // get extended metadata
+                {
+                    var ckMetaExt = CACHE_KEY_IMDB_META_EXT.Replace("[imdb]", imdbId);
+                    meta = cache.Get<ExtendedMeta>(ckMetaExt);
+                    if (meta == null) {
+                        var ckMeta = CACHE_KEY_IMDB_META.Replace("[imdb]", imdbId);
+                        meta = cache.Get<ExtendedMeta>(ckMeta);
+                        if (meta != null) {
+                            var providers = HttpContext.RequestServices.GetServices<IAdditionalMetadataProvider>();
+                            foreach (var provider in providers) {
+                                foreach (var id in ids) {
+                                    try {
+                                        if (!provider.CanGetAdditionalMetadata(id)) { continue; }
+
+                                        var extMeta = await provider.GetAdditionalMetadataAsync(type, id);
+                                        meta.Extend(extMeta);
+                                    } catch (Exception ex) {
+                                        logger.LogError($"{provider.GetType().Name} error retrieving extended meta for id: {id}.\n{ex}");
+                                    }
+                                }
+                            }
+                            cache.Set(ckMetaExt, meta);
+                        }
+                    }
+                }
+
+                // get custom ids
+                {
+                    var ckMetaExt = CACHE_KEY_IMDB_META_EXT.Replace("[imdb]", imdbId);
+                    meta = cache.Get<ExtendedMeta>(ckMetaExt);
+                    if (meta != null) {
+                        var providers = HttpContext.RequestServices.GetServices<ICustomIdProvider>();
+                        foreach (var provider in providers) {
+                            var ckMapping = CACHE_KEY_ID_MAPPING
+                                .Replace("[type]", provider.GetType().Name)
+                                .Replace("[id]", imdbId);
+                            var id = cache.Get<string>(ckMapping);
+                            if (string.IsNullOrWhiteSpace(id)) {
+                                var customId = await provider.GetCustomId(meta);
+                                if (customId == null) { continue; }
+
+                                if (!customId.Expiration.HasValue) {
+                                    cache.Set(ckMapping, customId.Id);
+                                } else {
+                                    cache.Set(ckMapping, customId.Id, customId.Expiration.Value);
+                                }
+                                ids.Add(customId.Id);
+                            } else {
+                                ids.Add(id);
+                            }
+                        }
+                    }
+                }
             }
 
             var streams = new List<MediaStream>();
             var streamProviders = HttpContext.RequestServices.GetServices<IMediaProvider>();
             await Parallel.ForEachAsync(streamProviders, async (streamProvider, token) => {
-                if (!streamProvider.CanHandle(kpId)) { return; }
+                foreach(var id in ids) {
+                    if (!streamProvider.CanGetStreams(id)) { continue; }
 
-                try {
-                    var newStreams = await streamProvider.GetStreams(kpId, season, episode);
-                    if (!newStreams.Any()) {
-                        if (!streamProvider.CanHandle(id)) { return; }
-                        newStreams = await streamProvider.GetStreams(id, season, episode);
-                    }
+                    try {
+                        var newStreams = await streamProvider.GetStreams(id, season, episode);
+                        if (!newStreams.Any()) { continue; }
 
-                    lock (streams) {
-                        streams.AddRange(newStreams);
+                        lock (streams) {
+                            streams.AddRange(newStreams);
+                        }
+
+                        break;
+                    } catch (Exception ex) {
+                        logger.LogError($"{streamProvider.GetType().Name} error retrieving streams for id: {id}.\n{ex}");
+                        // TODO: logging?
                     }
-                } catch {
-                    // TODO: logging?
                 }
             });
 
@@ -179,7 +258,7 @@ namespace Void.EXStremio.Web.Controllers {
             var mediaLink = new MediaLink(new Uri(uriString), source, format, quality);
 
             var mediaProviders = HttpContext.RequestServices.GetServices<IMediaProvider>();
-            var mediaProvider = mediaProviders.FirstOrDefault(x => x.CanHandle(mediaLink));
+            var mediaProvider = mediaProviders.FirstOrDefault(x => x.CanGetMedia(mediaLink));
             if (mediaProvider == null) {
                 logger?.LogWarning($"No provider found to handle the request: (source: {source}, format: {format}, quality: {quality})");
                 throw new InvalidDataException("No provider found to handle the request.");
@@ -215,43 +294,6 @@ namespace Void.EXStremio.Web.Controllers {
             }
 
             return file;
-
-            //var isRangeRequest = Request.Headers.ContainsKey("Range");
-
-            //if (cdn == MediaCdnType.Collapse) {
-            //    if (format == MediaFormatType.DASH) {
-            //        var provider = (CollapsCdnProvider)HttpContext.RequestServices.GetServices<IMediaProvider>().FirstOrDefault(x => x.GetType() == typeof(CollapsCdnProvider));
-            //        if (provider == null) { throw new InvalidOperationException("Collaps provider not initialized"); }
-
-            //        var xml = await provider.GetDashXml(new Uri(url), quality);
-
-            //        var bytes = Encoding.UTF8.GetBytes(xml);
-            //        return File(bytes, "application/dash+xml");
-            //    }
-            //}
-            //var client = httpClientFactory.CreateClient();
-
-            //var message = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
-            //if (isRangeRequest) {
-            //    message.Headers.Range = new RangeHeaderValue();
-            //    foreach (var rangeString in Request.Headers.Range) {
-            //        var range = rangeString.Replace("bytes=", "").Split('-', StringSplitOptions.RemoveEmptyEntries);
-            //        message.Headers.Range.Ranges.Add(new RangeItemHeaderValue(long.Parse(range[0]), range.Length > 1 ? long.Parse(range[1]) : null));
-            //    }
-            //}
-
-            //var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
-            //var stream = await response.Content.ReadAsStreamAsync();
-
-            //var result = File(stream, response.Content.Headers.ContentType?.ToString(), true);
-            //Response.Headers.Append("Accept-Ranges", "bytes");
-            //Response.Headers.Append("Content-Length", response.Content.Headers.ContentLength?.ToString());
-            //if (isRangeRequest) {
-            //    Response.Headers.Append("Content-Range", response.Content.Headers.ContentRange?.ToString());
-            //    Response.StatusCode = (int)HttpStatusCode.PartialContent;
-            //}
-
-            //return result;
         }
     }
 }

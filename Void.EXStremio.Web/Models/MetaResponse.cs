@@ -7,9 +7,42 @@ namespace Void.EXStremio.Web.Models {
 
     public class ExtendedMeta : Meta {
         [JsonIgnore]
-        public string[] AlternativeTitles { get; set; }
+        public List<string> AlternativeTitles { get; } = new List<string>();
         [JsonIgnore]
-        public string[] LocalizedTitles { get; set; }
+        public List<LocalizedTitle> LocalizedTitles { get; } = new List<LocalizedTitle>();
+
+        public void Extend(ExtendedMeta meta) {
+            foreach (var localizedTitle in meta.LocalizedTitles) {
+                if (LocalizedTitles.Any(x => x.LangCode == localizedTitle.LangCode && x.Title == localizedTitle.Title)) { continue; }
+
+                LocalizedTitles.Add(localizedTitle);
+            }
+
+            foreach (var altTitle in meta.AlternativeTitles) {
+                if (AlternativeTitles.Contains(altTitle)) { continue; }
+
+                AlternativeTitles.Add(altTitle);
+            }
+        }
+
+        public int? GetYear() {
+            var yearString = this.Year;
+            if (string.IsNullOrWhiteSpace(yearString)) { return null; }
+            
+            var parts = yearString.Split(['-', '–'], StringSplitOptions.RemoveEmptyEntries);
+
+            return int.Parse(parts[0]);
+        }
+    }
+
+    public class LocalizedTitle {
+        public string LangCode { get; }
+        public string Title { get; }
+
+        public LocalizedTitle(string langCode, string title) {
+            LangCode = langCode; ;
+            Title = title;
+        }
     }
 
     public partial class Meta {
@@ -47,8 +80,6 @@ namespace Void.EXStremio.Web.Models {
         public string KpId { get; set; }
         [JsonPropertyName("name")]
         public string Name { get; set; }
-        [JsonIgnore]
-        public string OriginalName { get; set; }
 
         [JsonPropertyName("popularity")]
         public double Popularity { get; set; }

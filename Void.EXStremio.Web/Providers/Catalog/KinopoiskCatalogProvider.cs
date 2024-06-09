@@ -17,26 +17,27 @@ namespace Void.EXStremio.Web.Providers.Catalog {
         }
 
         public async Task<CatalogResponse<KinopoiskMeta>> GetAsync(string type, string searchQuery) {
-            var client = httpClientFactory.CreateClient(HTTP_CLIENT_KEY);
-            var searchSuggestQuery = new SearchSuggestQuery(searchQuery);
-            var query = searchSuggestQuery.GetQuery();
-            var queryString = JsonSerializer.Serialize(query, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            var uri = new Uri(string.Format(baseUri, SearchSuggestQuery.OPERATION_NAME));
+            using (var client = httpClientFactory.CreateClient(HTTP_CLIENT_KEY)) {
+                var searchSuggestQuery = new SearchSuggestQuery(searchQuery);
+                var query = searchSuggestQuery.GetQuery();
+                var queryString = JsonSerializer.Serialize(query, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                var uri = new Uri(string.Format(baseUri, SearchSuggestQuery.OPERATION_NAME));
 
-            var content = new StringContent(queryString, MediaTypeHeaderValue.Parse("application/json"));
-            var response = await client.PostAsync(uri, content);
-            var searchSuggestResponse = await response.Content.ReadFromJsonAsync<GraphqlResponse<SearchSuggestKpResponse>>();
+                var content = new StringContent(queryString, MediaTypeHeaderValue.Parse("application/json"));
+                var response = await client.PostAsync(uri, content);
+                var searchSuggestResponse = await response.Content.ReadFromJsonAsync<GraphqlResponse<SearchSuggestKpResponse>>();
 
-            //TODO: extract into converter class
-            return new CatalogResponse<KinopoiskMeta>() {
-                Query = searchQuery,
-                Rank = 1,
-                CacheMaxAge = 21600,
-                Metas = searchSuggestResponse.Data.Suggest.Global.Items.Select(x => {
-                    var converter = new KpItemToMetaConverter(x.Global);
-                    return converter.ToMeta();
-                }).ToArray()
-            };
+                //TODO: extract into converter class
+                return new CatalogResponse<KinopoiskMeta>() {
+                    Query = searchQuery,
+                    Rank = 1,
+                    CacheMaxAge = 21600,
+                    Metas = searchSuggestResponse.Data.Suggest.Global.Items.Select(x => {
+                        var converter = new KpItemToMetaConverter(x.Global);
+                        return converter.ToMeta();
+                    }).ToArray()
+                };
+            }
         }
     }
 
@@ -49,8 +50,7 @@ namespace Void.EXStremio.Web.Providers.Catalog {
 
         public KinopoiskMeta ToMeta() {
             var meta = new KinopoiskMeta();
-            meta.Name = GetName();
-            meta.OriginalName = GetOriginalName();
+            meta.Name = GetTitle();
             meta.Year = GetYear().ToString();
             meta.ReleaseInfo = GetYears();
             meta.StartYear = GetStartYear();
@@ -59,40 +59,28 @@ namespace Void.EXStremio.Web.Providers.Catalog {
             meta.KpRating = kpItem.Rating?.Kinopoisk?.Value?.ToString();
             meta.Poster = kpItem.Gallery.Posters.Vertical != null ? new Uri("https:" + kpItem.Gallery.Posters.Vertical.Url) : null;
             meta.Type = GetItemType();
-            var localizedName = GetLocalizedName();
+            var localizedName = GetLocalizedTitle();
             if (!string.IsNullOrEmpty(localizedName)) {
-                meta.LocalizedTitles = [ localizedName ];
+                meta.LocalizedTitles.Add(new LocalizedTitle("ru", localizedName));
             }
 
             return meta;
         }
 
-        string GetName() {
-            if (!string.IsNullOrEmpty(kpItem.Title.Original) && !string.IsNullOrEmpty(kpItem.Title.Localized)) {
-                return kpItem.Title.Original;
-            } else if(!string.IsNullOrEmpty(kpItem.Title.Original)) {
-                return kpItem.Title.Original;
-            } else {
-                return kpItem.Title.Localized;
-            }
-        }
-
-        string GetOriginalName() {
-            if (!string.IsNullOrEmpty(kpItem.Title.Original) && !string.IsNullOrEmpty(kpItem.Title.Localized)) {
-                return null;
-            } else if (!string.IsNullOrEmpty(kpItem.Title.Original)) {
+        string GetTitle() {
+            if (!string.IsNullOrEmpty(kpItem.Title.Localized)) {
                 return kpItem.Title.Original;
             }
 
             return null;
         }
 
-        string GetLocalizedName() {
-            if (!string.IsNullOrEmpty(kpItem.Title.Original) && !string.IsNullOrEmpty(kpItem.Title.Localized)) {
+        string GetLocalizedTitle() {
+            if (!string.IsNullOrEmpty(kpItem.Title.Localized)) {
                 return kpItem.Title.Localized;
             }
 
-            return null;
+            return kpItem.Title.Original;
         }
 
         int? GetYear() {

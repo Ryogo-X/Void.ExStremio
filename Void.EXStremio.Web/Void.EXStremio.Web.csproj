@@ -10,10 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\Kinopoisk\GetDetailsQuery.graphql" />
     <None Remove="Resources\Kinopoisk\SearchSuggestQuery.graphql" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\Kinopoisk\GetDetailsQuery.graphql" />
     <EmbeddedResource Include="Resources\Kinopoisk\SearchSuggestQuery.graphql" />
   </ItemGroup>
 

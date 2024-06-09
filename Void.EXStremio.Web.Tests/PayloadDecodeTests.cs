@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Void.EXStremio.Web.Providers.Stream;
+using Void.EXStremio.Web.Providers.Media.HdRezka;
 
 namespace Void.EXStremio.Web.Tests {
     public class PayloadDecodeTests {

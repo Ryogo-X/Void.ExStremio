@@ -8,10 +8,14 @@ using System.Reflection;
 using Void.EXStremio.Web.Models;
 using Void.EXStremio.Web.Providers.Catalog;
 using Void.EXStremio.Web.Providers.Media.AllohaTv;
+using Void.EXStremio.Web.Providers.Media.Ashdi;
+using Void.EXStremio.Web.Providers.Media.CdnMovies;
 using Void.EXStremio.Web.Providers.Media.Collaps;
+using Void.EXStremio.Web.Providers.Media.HdRezka;
 using Void.EXStremio.Web.Providers.Media.Hdvb;
 using Void.EXStremio.Web.Providers.Media.Kodik;
 using Void.EXStremio.Web.Providers.Media.VideoCdn;
+using Void.EXStremio.Web.Providers.Media.Zetflix;
 using Void.EXStremio.Web.Providers.Metadata;
 using Void.EXStremio.Web.Utility;
 
@@ -82,6 +86,8 @@ namespace Void.EXStremio.Web {
         }
 
         static void RegisterProviders(IServiceCollection serviceCollection) {
+            const string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0";
+            const string acceptLang = "ru-RU,ru;q=0.5";
             var logger = serviceCollection.BuildServiceProvider().GetService<ILogger<Program>>();
 
             // ---
@@ -99,10 +105,12 @@ namespace Void.EXStremio.Web {
                 logger?.LogWarning("[INIT] TMDB provider not initialized - api key is missing.");
             }
 
-            serviceCollection.AddSingleton<IAdditionalMetadataProvider, ImdbMetaProvider>();
-            serviceCollection.AddHttpClient(ImdbMetaProvider.HTTP_CLIENT_KEY, httpClient => {
-                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
-            });
+            //serviceCollection.AddSingleton<IAdditionalMetadataProvider, ImdbMetaProvider>();
+            //serviceCollection.AddHttpClient(ImdbMetaProvider.HTTP_CLIENT_KEY, httpClient => {
+            //    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
+            //});
+
+            serviceCollection.AddSingleton<IAdditionalMetadataProvider, KinopoiskMetaProvider>();
 
             // ICatalogProvider
             serviceCollection.AddSingleton<ICatalogProvider, KinopoiskCatalogProvider>();
@@ -118,8 +126,8 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddSingleton<IKinopoiskIdProvider, KodikCdnProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, KodikCdnProvider>();
                 serviceCollection.AddHttpClient(nameof(KodikCdnProvider), httpClient => {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0");
-                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                     httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
                 });
             } else {
@@ -148,8 +156,8 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddSingleton(_ => new CollapsConfig(collapsApiKey));
                 serviceCollection.AddSingleton<IMediaProvider, CollapsCdnProvider>();
                 serviceCollection.AddHttpClient(nameof(CollapsCdnProvider), httpClient => {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0");
-                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                 });
             } else {
                 logger?.LogWarning("[INIT] Collaps provider not initialized - api key is missing.");
@@ -160,14 +168,53 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddSingleton(_ => new HdvbConfig(hdvbApiKey));
                 serviceCollection.AddSingleton<IMediaProvider, HdvbCdnProvider>();
                 serviceCollection.AddHttpClient(nameof(HdvbCdnProvider), httpClient => {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0");
-                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                     httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
                     // http://flicksbar.mom/
                 });
             } else {
                 logger?.LogWarning("[INIT] HDVB provider not initialized - api key is missing.");
             }
+
+            var hdrHostUrl = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY);
+            if (Uri.TryCreate(hdrHostUrl, UriKind.Absolute, out var hostUri)) {
+                serviceCollection.AddSingleton(_ => new HdRezkaConfig(hostUri));
+                serviceCollection.AddSingleton<ICustomIdProvider, HdRezkaCdnProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, HdRezkaCdnProvider>();
+                serviceCollection.AddHttpClient(nameof(HdRezkaCdnProvider), httpClient => {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AutomaticDecompression = DecompressionMethods.All
+                });
+            } else {
+                logger?.LogWarning("[INIT] HdRezka provider not initialized - api key is missing.");
+            }
+
+            var cdnMoviesApiKey = Environment.GetEnvironmentVariable(CdnMoviesConfig.CONFIG_API_KEY);
+            if (!string.IsNullOrEmpty(videoCdnApiKey)) {
+                serviceCollection.AddSingleton(_ => new CdnMoviesConfig(cdnMoviesApiKey));
+                serviceCollection.AddSingleton<IKinopoiskIdProvider, CdnMoviesCdnProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, CdnMoviesCdnProvider>();
+            } else {
+                logger?.LogWarning("[INIT] CdnMovies provider not initialized - api key is missing.");
+            }
+
+            var ashdiApiKey = Environment.GetEnvironmentVariable(AshdiConfig.CONFIG_API_KEY);
+            if (!string.IsNullOrEmpty(videoCdnApiKey)) {
+                serviceCollection.AddSingleton(_ => new AshdiConfig(ashdiApiKey));
+                serviceCollection.AddSingleton<IKinopoiskIdProvider, AshdiCdnProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, AshdiCdnProvider>();
+                serviceCollection.AddHttpClient(nameof(AshdiCdnProvider), httpClient => {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                });
+            } else {
+                logger?.LogWarning("[INIT] Ashdi provider not initialized - api key is missing.");
+            }
+
+            serviceCollection.AddSingleton<IMediaProvider, ZetflixCdnProvider>();
         }
     }
 }

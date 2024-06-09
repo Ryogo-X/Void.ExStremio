@@ -8,6 +8,7 @@ namespace Void.EXStremio.Web.Models {
     }
 
     interface IAdditionalMetadataProvider {
+        bool CanGetAdditionalMetadata(string id);
         Task<ExtendedMeta?> GetAdditionalMetadataAsync(string type, string id);
     }
 
@@ -23,11 +24,16 @@ namespace Void.EXStremio.Web.Models {
         Task<string> GetKinopoiskIdAsync(ExtendedMeta meta);
     }
 
+    interface ICustomIdProvider {
+        bool CanGetCustomId(ExtendedMeta meta);
+        Task<CustomIdResult> GetCustomId(ExtendedMeta meta);
+    }
+
     interface IMediaProvider {
         string ServiceName { get; }
 
-        bool CanHandle(string id);
-        bool CanHandle(MediaLink link);
+        bool CanGetStreams(string id);
+        bool CanGetMedia(MediaLink link);
         Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null);
         Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null);
     }

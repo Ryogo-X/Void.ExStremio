@@ -44,11 +44,11 @@ namespace Void.EXStremio.Web.Providers.Media.Collaps {
             CACHE_KEY_PLAYLIST = $"{ServiceName}:PLAYLIST:[uri]:[quality]";
         }
 
-        public bool CanHandle(string id) {
+        public bool CanGetStreams(string id) {
             return id.StartsWith(PREFIX);
         }
 
-        public bool CanHandle(MediaLink link) {
+        public bool CanGetMedia(MediaLink link) {
             if (link.SourceType.ToUpperInvariant() != ServiceName.ToUpperInvariant()) { return false; }
             if (!link.IsPlaylist()) { return false; }
 

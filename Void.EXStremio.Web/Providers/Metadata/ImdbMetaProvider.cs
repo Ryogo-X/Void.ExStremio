@@ -5,11 +5,17 @@ using AngleSharp.Dom;
 namespace Void.EXStremio.Web.Providers.Metadata {
     public class ImdbMetaProvider : IAdditionalMetadataProvider {
         public const string HTTP_CLIENT_KEY = "imdb";
+        const string PREFIX = "tt";
+
         readonly IHttpClientFactory httpClientFactory;
         const string baseUri = "https://www.imdb.com/title/";
 
         public ImdbMetaProvider(IHttpClientFactory httpClientFactory) {
             this.httpClientFactory = httpClientFactory;
+        }
+
+        public bool CanGetAdditionalMetadata(string id) {
+            return id.StartsWith(PREFIX);
         }
 
         public async Task<ExtendedMeta?> GetAdditionalMetadataAsync(string type, string id) {
@@ -30,7 +36,8 @@ namespace Void.EXStremio.Web.Providers.Metadata {
                     Id = id,
                     ImdbId = id,
                     Name = GetTitle(document),
-                    OriginalName = GetOriginalTitle(document),
+                    // TODO: FIX?
+                    //OriginalName = GetOriginalTitle(document),
                     Year = years.startYear?.ToString(),
                     StartYear = years.startYear,
                     EndYear = years.endYear,
