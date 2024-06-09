@@ -144,7 +144,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                                     var mediaStream = new MediaStream() {
                                         Name = $"[{ServiceName.ToUpperInvariant()}]\n[{mediaLink.Quality}p]",
                                         Title = $"Episode {episode?.ToString("000")}\n{item.Title}",
-                                        Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Direct).GetUri().ToString()
+                                        Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Proxy).GetUri().ToString()
                                     };
                                     newMediaStreams.Add(mediaStream);
                                 }
@@ -159,7 +159,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                                 var mediaStream = new MediaStream() {
                                     Name = $"[{ServiceName.ToUpperInvariant()}]\n[{mediaLink.Quality}p]",
                                     Title = (string.IsNullOrWhiteSpace(meta.OriginalTitle) ? meta.Title : $"{meta.Title} / {meta.OriginalTitle}") + $"\n{item.Title}",
-                                    Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Direct).GetUri().ToString()
+                                    Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Proxy).GetUri().ToString()
                                 };
                                 newMediaStreams.Add(mediaStream);
                             }
@@ -177,11 +177,34 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
 
         #region IMediaProvider / streaming
         public bool CanGetMedia(MediaLink link) {
-            return false;
+            if (link.SourceType.ToUpperInvariant() != ServiceName.ToUpperInvariant()) { return false; }
+            if (link.FormatType != MediaFormatType.MP4) { return false; }
+
+            return true;
         }
 
-        public Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
-            throw new NotImplementedException();
+        public async Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
+            if (link.FormatType != MediaFormatType.MP4) { throw new NotSupportedException($"[{ServiceName}] fomat '{link.FormatType}' not supported."); }
+
+            using (var client = GetHttpClient()) {
+                var message = new HttpRequestMessage(HttpMethod.Get, link.SourceUri);
+                message.Headers.Range = range;
+
+                var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode) {
+                    // TODO: logging
+                    return null;
+                }
+
+                var contentType = response.Content.Headers.ContentType.ToString();
+                var stream = await response.Content.ReadAsStreamAsync();
+                var contentLength = response.Content.Headers.ContentLength.Value;
+
+                return new StreamMediaSource(contentType, stream, contentLength) {
+                    AcceptRanges = response.Headers.AcceptRanges?.FirstOrDefault()?.ToString(),
+                    ContentRange = response.Content.Headers.ContentRange?.ToString()
+                };
+            }
         }
         #endregion
     }
