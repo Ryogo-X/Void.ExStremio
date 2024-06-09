@@ -60,7 +60,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
             var lines = File.Split(',', StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines) {
                 var quality = Regex.Match(line, @"\[(?<quality>[0-9]+)p\]").Groups["quality"].Value;
-                var url = Regex.Match(line, @"(http|https)[^ ,]+").Value;
+                var url = Regex.Match(line, @"(http|https)[^ ,]+").Value.Replace(":hls:manifest.m3u8", "");
 
                 yield return (quality, url); 
             }          

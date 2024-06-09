@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -128,9 +129,12 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                     client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
                     var response = await client.GetAsync(iframeUri);
                     var html = await response.Content.ReadAsStringAsync();
-                    var dataString = Regex.Match(html, "file: '(?<data>.+)'").Groups["data"].Value;
-                    dataString = Regex.Replace(dataString.Replace("#2", ""), "//.{40}", "");
-                    var json = Base64Ext.Decode(dataString);
+                    var encodedDataString = Regex.Match(html, "file: '(?<data>.+)'").Groups["data"].Value;
+                    var decodedDataString = Regex.Replace(encodedDataString.Replace("#2", ""), "//.{40}", "");
+                    if (!Ascii.IsValid(decodedDataString)) {
+                        decodedDataString = encodedDataString.Replace("#2", "").Replace("//", "");
+                    }
+                    var json = Base64Ext.Decode(decodedDataString);
 
                     var newMediaStreams = new List<MediaStream>();
                     if (season.HasValue && episode.HasValue) {
