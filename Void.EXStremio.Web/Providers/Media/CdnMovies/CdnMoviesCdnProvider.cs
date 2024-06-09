@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -10,7 +7,7 @@ using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
     public class CdnMoviesConfig {
-        public const string CONFIG_API_KEY = "ALLOHA_API_KEY";
+        public const string CONFIG_API_KEY = "CDNMOVIES_API_KEY";
 
         public string ApiKey { get; }
 

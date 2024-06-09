@@ -1,9 +1,6 @@
-﻿using System.Net.Http;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
-using Void.EXStremio.Web.Providers.Media.CdnMovies;
-using Void.EXStremio.Web.Providers.Media.Kodik.Models;
 using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Providers.Media.Ashdi {

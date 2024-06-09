@@ -104,18 +104,21 @@ namespace Void.EXStremio.Web.Controllers {
                         meta = cache.Get<ExtendedMeta>(ckMeta);
                         if (meta != null) {
                             var providers = HttpContext.RequestServices.GetServices<IAdditionalMetadataProvider>();
-                            foreach (var provider in providers) {
+                            await Parallel.ForEachAsync(providers, async (provider, token) => {
                                 foreach (var id in ids) {
                                     try {
                                         if (!provider.CanGetAdditionalMetadata(id)) { continue; }
 
                                         var extMeta = await provider.GetAdditionalMetadataAsync(type, id);
-                                        meta.Extend(extMeta);
+                                        lock (meta) {
+                                            meta.Extend(extMeta);
+                                        }
                                     } catch (Exception ex) {
                                         logger.LogError($"{provider.GetType().Name} error retrieving extended meta for id: {id}.\n{ex}");
                                     }
                                 }
-                            }
+                            });
+
                             cache.Set(ckMetaExt, meta);
                         }
                     }
@@ -127,25 +130,29 @@ namespace Void.EXStremio.Web.Controllers {
                     meta = cache.Get<ExtendedMeta>(ckMetaExt);
                     if (meta != null) {
                         var providers = HttpContext.RequestServices.GetServices<ICustomIdProvider>();
-                        foreach (var provider in providers) {
+                        await Parallel.ForEachAsync(providers, async (provider, token) => {
                             var ckMapping = CACHE_KEY_ID_MAPPING
                                 .Replace("[type]", provider.GetType().Name)
                                 .Replace("[id]", imdbId);
                             var id = cache.Get<string>(ckMapping);
                             if (string.IsNullOrWhiteSpace(id)) {
                                 var customId = await provider.GetCustomId(meta);
-                                if (customId == null) { continue; }
+                                if (customId == null) { return; }
 
                                 if (!customId.Expiration.HasValue) {
                                     cache.Set(ckMapping, customId.Id);
                                 } else {
                                     cache.Set(ckMapping, customId.Id, customId.Expiration.Value);
                                 }
-                                ids.Add(customId.Id);
+                                lock (ids) {
+                                    ids.Add(customId.Id);
+                                }
                             } else {
-                                ids.Add(id);
+                                lock (ids) {
+                                    ids.Add(id);
+                                }
                             }
-                        }
+                        });
                     }
                 }
             }
