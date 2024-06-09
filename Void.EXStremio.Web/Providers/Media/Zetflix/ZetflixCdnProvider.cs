@@ -99,9 +99,8 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
                     var item = await JsonSerializerExt.DeserializeAsync<ZetflixResponse>(json);
                     if (item.Method != "play") { continue; }
 
-                    var title = item.Title.Trim(['(', ')']);
                     if (episode.HasValue) {
-                        var episodeString = Regex.Match(title, "(?<episode>[0-9]+) серия").Groups["episode"].Value;
+                        var episodeString = Regex.Match(item.Title, "(?<episode>[0-9]+) серия").Groups["episode"].Value;
                         if (episodeString != episode.ToString()) { continue; }
                     }
                     foreach (var videoLink in item.Links) {
@@ -115,7 +114,7 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
                         if (season.HasValue && episode.HasValue) {
                             mediaStream.Title = $"Episode {episode?.ToString("000")}";
                         } else {
-                            mediaStream.Title = title;
+                            mediaStream.Title = item.Title;
                         }
 
                         mediaStreams.Add(mediaStream);

@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -176,6 +177,15 @@ namespace Void.EXStremio.Web.Controllers {
                     }
                 }
             });
+
+            // selecting minimum 480p quality
+            streams.RemoveAll(stream => {
+                var qualityString = Regex.Match(stream.Name, "(?<quality>[0-9]+)p").Groups["quality"].Value;
+                if (!int.TryParse(qualityString, out var quality)) { return false; }
+
+                return quality < 480;
+            });
+            
 
             // transform relative urls to absolute urls
             foreach (var stream in streams) {
