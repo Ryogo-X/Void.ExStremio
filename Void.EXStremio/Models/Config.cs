@@ -38,6 +38,8 @@ namespace Void.EXStremio.Models {
         public string CdnMoviesApiKey { get; set; }
         public string AshdiApiKey { get; set; }
         public Uri HdRezkaHostUri { get; set; }
+        public string HdRezkaUser { get; set; }
+        public string HdRezkaPassword { get; set; }
 
         public static Config Load() {
             if (!File.Exists(path)) { return null; }
@@ -66,6 +68,8 @@ namespace Void.EXStremio.Models {
             Environment.SetEnvironmentVariable(CdnMoviesConfig.CONFIG_API_KEY, CdnMoviesApiKey);
             Environment.SetEnvironmentVariable(AshdiConfig.CONFIG_API_KEY, AshdiApiKey);
             Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY, HdRezkaHostUri.ToString());
+            Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_USER_KEY, HdRezkaUser);
+            Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_PASSWORD_KEY, HdRezkaPassword);
         }
     }
 }

@@ -6,11 +6,17 @@ using Void.EXStremio.Web.Utility;
 namespace Void.EXStremio.Web.Providers.Media.HdRezka {
     public class HdRezkaConfig {
         public const string CONFIG_HOST_URL_KEY = "HDREZKA_HOST_URL";
+        public const string CONFIG_USER_KEY = "HDREZKA_USER";
+        public const string CONFIG_PASSWORD_KEY = "HDREZKA_PASSWORD";
 
         public Uri HostUri { get; }
+        public string User { get; }
+        public string Password { get; }
 
-        public HdRezkaConfig(Uri hostUri) {
+        public HdRezkaConfig(Uri hostUri, string user, string password) {
             HostUri = hostUri;
+            User = user;
+            Password = password;
         }
     }
 
@@ -24,7 +30,7 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         readonly HdRezkaApi apiClient;
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_ITEM_EXT_ID;
         readonly string CACHE_KEY_ITEM_METADATA;
         readonly string CACHE_KEY_STREAMS;
@@ -33,7 +39,7 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         public HdRezkaCdnProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, HdRezkaConfig config) : base(httpClientFactory, cache) {
             this.config = config;
-            this.apiClient = new HdRezkaApi(config.HostUri, GetHttpClient);
+            this.apiClient = new HdRezkaApi(config.HostUri, config.User, config.Password, GetHttpClient, cache);
 
             CACHE_KEY_ITEM_EXT_ID = $"{ServiceName}:ITEM:EXT:ID:[id]";
             CACHE_KEY_ITEM_METADATA = $"{ServiceName}:ITEM:META:[uri]";
@@ -196,5 +202,9 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             }
         }
         #endregion
+
+        protected override HttpClient GetHttpClient() {
+            return httpClientFactory.CreateClient(nameof(HdRezkaCdnProvider));
+        }
     }
 }

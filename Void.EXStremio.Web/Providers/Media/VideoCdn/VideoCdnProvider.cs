@@ -26,7 +26,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
         const string baseImdbSearchUri = "https://videocdn.tv/api/short?api_token=[token]&imdb_id=[id]";
         const string baseKpSearchUri = "https://videocdn.tv/api/short?api_token=[token]&kinopoisk_id=[id]";
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_API_SEARCH_IMDB;
         readonly string CACHE_KEY_API_SEARCH_KP;
         readonly string CACHE_KEY_STREAMS;
@@ -159,7 +159,11 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                     .SelectNodes("//div[@class=\"translations\"]/select/option")
                     ?.Where(x => x.GetAttributeValue("value", null) != "0")
                     .Select(x => (Id: x.GetAttributeValue("value", null), Name: x.InnerText.Trim()));
-                var json = htmlDocument.DocumentNode.SelectSingleNode("//input[@id=\"ury\"]").GetAttributeValue("value", null);
+                var json = htmlDocument.DocumentNode
+                    .SelectNodes("//input[@type='hidden']")
+                    .Select(x => x.GetAttributeValue("value", null))
+                    .Where(x => !string.IsNullOrWhiteSpace(x) && !x.Contains("&quot;"))
+                    .Single(x => x.Contains(".mp4"));
 
                 var mediaStreams = new List<MediaStream>();
                 if (season.HasValue && episode.HasValue) {
@@ -167,7 +171,9 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                     foreach (var kv in tvDict) {
                         if (kv.Key == "0") { continue; }
 
-                        var translation = translations?.First(x => x.Id == kv.Key).Name;
+                        var translation = translations?.FirstOrDefault(x => x.Id == kv.Key).Name;
+                        if (string.IsNullOrWhiteSpace(translation)) { continue; }
+
                         var episodeItem = kv.Value.SelectMany(x => x.Episodes).FirstOrDefault(x => x.Id == $"{season}_{episode}");
                         if (episodeItem == null) { continue; }
 
@@ -178,7 +184,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                         var links = GetLinks(episodeItem.File);
                         foreach (var link in links) {
                             var mediaStream = new MediaStream() {
-                                Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}p]",
+                                Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}]",
                                 Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Proxy).ToString(),
                                 Title = $"Episode {episode?.ToString("000")}\n{translation}"
                             };
@@ -194,7 +200,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
                         var links = GetLinks(kv.Value);
                         foreach (var link in links) {
                             var mediaStream = new MediaStream() {
-                                Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}p]",
+                                Name = $"[{ServiceName.ToUpperInvariant()}]\n[{link.quality}]",
                                 Url = new MediaLink(link.uri, ServiceName, MediaFormatType.MP4, link.quality, MediaProxyType.Proxy).ToString(),
                                 Title = $"\n{translation}"
                             };
@@ -210,7 +216,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
         public IEnumerable<(string quality, Uri uri)> GetLinks(string fileString) {
             var lines = fileString?.Split(',', StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines) {
-                var match = Regex.Match(line, "\\[(?<quality>[0-9]+)p\\](?<uri>.*)");
+                var match = Regex.Match(line, "\\[(?<quality>.*)\\](?<uri>.*)");
 
                 yield return (match.Groups["quality"].Value, new Uri("https:" + match.Groups["uri"].Value));
             }

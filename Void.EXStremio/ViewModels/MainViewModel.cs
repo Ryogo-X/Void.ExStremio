@@ -45,6 +45,8 @@ namespace Void.EXStremio.ViewModels {
         }
 
         void OnConfigReloaded(IConfig config) {
+            config.InitializeEnvironmentVariables();
+
             InitializeWatcher(config);
 
             appRoot.Exit -= OnAppExit;
@@ -58,8 +60,6 @@ namespace Void.EXStremio.ViewModels {
             if (config.CloseWithStremio) {
                 watcher.ProcessExited += OnStremioProcessExited;
             }
-
-            config.InitializeEnvironmentVariables();
         }
 
         void OnStremioProcessExited() {

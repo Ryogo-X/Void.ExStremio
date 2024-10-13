@@ -15,7 +15,7 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
             get { return "Zetflix"; }
         }
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_STREAMS;
 
         public ZetflixCdnProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) {
@@ -48,6 +48,10 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
 
                 using (var client = GetHttpClient()) {
                     var response = await client.GetAsync(uriString);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Redirect) {
+                        response = await client.GetAsync(response.Headers.Location);
+                    }
+
                     if (!response.IsSuccessStatusCode) {
                         // TODO: logging?
                         return [];
@@ -87,6 +91,10 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
 
             using (var client = GetHttpClient()) {
                 var response = await client.GetAsync(uri);
+                if (response.StatusCode == System.Net.HttpStatusCode.Redirect) {
+                    response = await client.GetAsync(response.Headers.Location);
+                }
+
                 if (!response.IsSuccessStatusCode) {
                     // TODO: logging?
                     return [];
@@ -127,6 +135,10 @@ namespace Void.EXStremio.Web.Providers.Media.Zetflix {
 
         public Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range) {
             throw new NotImplementedException();
+        }
+
+        protected override HttpClient GetHttpClient() {
+            return httpClientFactory.CreateClient(nameof(ZetflixCdnProvider));
         }
     }
 }

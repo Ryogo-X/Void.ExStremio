@@ -6,7 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Void.EXStremio.Web.Providers.Media {
     abstract class MediaProviderBase {
-        readonly IHttpClientFactory httpClientFactory;
+        readonly protected IHttpClientFactory httpClientFactory;
         readonly protected IMemoryCache cache;
 
         public abstract string ServiceName { get; }

@@ -21,7 +21,7 @@ namespace Void.EXStremio.Web.Providers.Media.Collaps {
         const string PREFIX = "kp";
         const string baseDetailsUri = "https://apicollaps.cc/franchise/details?token=[token]&kinopoisk_id=[id]";
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_API_SEARCH;
         readonly string CACHE_KEY_API_DETAILS_JSON;
         readonly string CACHE_KEY_API_DETAILS;
@@ -215,6 +215,8 @@ namespace Void.EXStremio.Web.Providers.Media.Collaps {
 
         string JsStringToJsonString(string jsString) {
             var json = jsString;
+
+            json = Regex.Replace(json, "poster.*?',", "");
 
             var matches = Regex.Matches(json, @"\""{0,1}([a-zA-Z0-9]{2,}\:)");
             foreach (Match match in matches) {

@@ -1,13 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
-using AngleSharp.Io;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
-using Void.EXStremio.Web.Providers.Metadata;
 using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web.Controllers {
@@ -138,11 +135,15 @@ namespace Void.EXStremio.Web.Controllers {
                                 .Replace("[id]", imdbId);
                             var customIds = cache.Get<CustomIdResult[]>(ckMapping);
                             if (customIds == null) {
-                                customIds = await provider.GetCustomIds(meta);
+                                try {
+                                    customIds = await provider.GetCustomIds(meta);
+                                } catch (Exception ex) {
+                                    logger.LogError($"{provider.GetType().Name} error retrieving custom ids.\n{ex}");
+                                }
                                 customIds ??= [];
 
-                                if (!customIds.First().Expiration.HasValue) {
-                                    cache.Set(ckMapping, customIds);
+                                if (customIds?.FirstOrDefault()?.Expiration.HasValue != true) {
+                                    cache.Set(ckMapping, customIds, DateTimeOffset.Now.AddHours(8));
                                 } else {
                                     cache.Set(ckMapping, customIds, customIds.First().Expiration.Value);
                                 }
@@ -172,7 +173,7 @@ namespace Void.EXStremio.Web.Controllers {
 
                         break;
                     } catch (Exception ex) {
-                        logger.LogError($"{streamProvider.GetType().Name} error retrieving streams for id: {id}.\n{ex}");
+                        logger.LogError(ex, $"{streamProvider.GetType().Name} error retrieving streams for id: {id}.\n{ex}");
                         // TODO: logging?
                     }
                 }

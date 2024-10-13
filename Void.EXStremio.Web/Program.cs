@@ -163,15 +163,18 @@ namespace Void.EXStremio.Web {
             }
 
             var hdrHostUrl = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY);
-            if (Uri.TryCreate(hdrHostUrl, UriKind.Absolute, out var hostUri)) {
-                serviceCollection.AddSingleton(_ => new HdRezkaConfig(hostUri));
+            var hdrUser = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_USER_KEY);
+            var hdrPassword = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_PASSWORD_KEY);
+            if (Uri.TryCreate(hdrHostUrl, UriKind.Absolute, out var hostUri) && !string.IsNullOrWhiteSpace(hdrUser) && !string.IsNullOrWhiteSpace(hdrPassword)) {
+                serviceCollection.AddSingleton(_ => new HdRezkaConfig(hostUri, hdrUser, hdrPassword));
                 serviceCollection.AddSingleton<ICustomIdProvider, HdRezkaCdnProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, HdRezkaCdnProvider>();
                 serviceCollection.AddHttpClient(nameof(HdRezkaCdnProvider), httpClient => {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                 }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
-                    AutomaticDecompression = DecompressionMethods.All
+                    AutomaticDecompression = DecompressionMethods.All,
+                    UseCookies = false
                 });
             } else {
                 logger?.LogWarning("[INIT] HdRezka provider not initialized - api key is missing.");
@@ -214,6 +217,12 @@ namespace Void.EXStremio.Web {
             }
 
             serviceCollection.AddSingleton<IMediaProvider, ZetflixCdnProvider>();
+            serviceCollection.AddHttpClient(nameof(ZetflixCdnProvider), httpClient => {
+                httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+            }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                AllowAutoRedirect = true
+            });
         }
     }
 }

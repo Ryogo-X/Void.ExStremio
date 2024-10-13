@@ -3,6 +3,8 @@ using AngleSharp;
 using System.Text.RegularExpressions;
 using System.Text;
 using Void.EXStremio.Web.Utility;
+using Microsoft.Extensions.Caching.Memory;
+using Void.EXStremio.Web.Models;
 
 namespace Void.EXStremio.Web.Providers.Media.HdRezka {
     class HdRezkaApi {
@@ -10,14 +12,23 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         readonly Uri host;
         readonly Func<HttpClient> getHttpClient;
+        readonly IMemoryCache cache;
+        readonly string user;
+        readonly string password;
+        readonly string cacheAuthKey = $"{nameof(HdRezkaApi):AUTH:COOKIES}";
 
-        public HdRezkaApi(Uri host, Func<HttpClient> getHttpClient) {
+        public HdRezkaApi(Uri host, string user, string password, Func<HttpClient> getHttpClient, IMemoryCache cache) {
             this.host = host;
+            this.user = user;
+            this.password = password;
             this.getHttpClient = getHttpClient;
+            this.cache = cache;
         }
 
         public async Task<HdRezkaSearchResult[]> Search(string query) {
             using (var client = getHttpClient()) {
+                await HandleAuth(client);
+
                 var vars = new List<KeyValuePair<string, string>> {
                     new KeyValuePair<string, string>("q", query)
                 };
@@ -25,8 +36,8 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
                 var url = new Uri(host, "/engine/ajax/search.php");
                 var response = await SimpleRetry.Retry(async () => await client.PostAsync(url, formContent), r => r.IsSuccessStatusCode, 3, 5, false);
                 var html = await response.Content.ReadAsStringAsync();
-
                 var document = await GetHtmlDocument(html);
+
                 var items = document.QuerySelectorAll(".b-search__section_list > li");
                 return items.Select(item => {
                     var url = new Uri(item.QuerySelector("a").GetAttribute("href"));
@@ -71,8 +82,14 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         public async Task<HdRezkaMetadata> GetMetadata(Uri url) {
             using (var client = getHttpClient()) {
+                await HandleAuth(client);
+
                 var response = await SimpleRetry.Retry(async () => await client.GetAsync(url), r => r.IsSuccessStatusCode, 3, 5, false);
                 var html = await response.Content.ReadAsStringAsync();
+                if (html.Contains("Ожидаем фильм в хорошем качестве...")) {
+                    throw new InvalidOperationException($"[HdRezka] item is not released yet...");
+                }
+
                 var document = await GetHtmlDocument(html, url);
 
                 string imdbId = null;
@@ -193,11 +210,13 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         public async Task<IReadOnlyDictionary<int, int[]>> GetEpisodes(Uri refererUrl, int id, int translatorId) {
             using (var client = getHttpClient()) {
+                await HandleAuth(client);
+
                 var vars = new List<KeyValuePair<string, string>> {
-                    new KeyValuePair<string, string>("id", id.ToString()),
-                    new KeyValuePair<string, string>("translator_id", translatorId.ToString()),
-                    new KeyValuePair<string, string>("action", "get_episodes")
-                };
+                        new KeyValuePair<string, string>("id", id.ToString()),
+                        new KeyValuePair<string, string>("translator_id", translatorId.ToString()),
+                        new KeyValuePair<string, string>("action", "get_episodes")
+                    };
                 var formContent = new FormUrlEncodedContent(vars);
 
                 client.DefaultRequestHeaders.Add("Referer", refererUrl.ToString());
@@ -255,6 +274,8 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
 
         async Task<IMediaStream[]> GetStreams(Uri refererUrl, FormUrlEncodedContent formBody) {
             using (var client = getHttpClient()) {
+                await HandleAuth(client);
+
                 client.DefaultRequestHeaders.Add("Referer", refererUrl.ToString());
                 var data = await SimpleRetry.Retry(
                     async () => {
@@ -304,6 +325,34 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             return document;
         }
 
+        public async Task HandleAuth(HttpClient client) {
+            if (!cache.TryGetValue(cacheAuthKey, out string[] cookies)) {
+                var vars = new List<KeyValuePair<string, string>> {
+                    new KeyValuePair<string, string>("login_name", user),
+                    new KeyValuePair<string, string>("login_password", password),
+                    new KeyValuePair<string, string>("login_not_save", "0")
+                };
+                var formContent = new FormUrlEncodedContent(vars);
+                var url = new Uri(host, "/ajax/login/");
+                var response = await SimpleRetry.Retry(async () => await client.PostAsync(url, formContent), r => r.IsSuccessStatusCode, 3, 5, false);
+                var json = await response.Content.ReadAsStringAsync();
+                var data = System.Text.Json.JsonSerializer.Deserialize<HdRezkaApiResponseBase>(json);
+
+
+                if (!data.Success || !response.Headers.TryGetValues("Set-Cookie", out var cookieStrings)) {
+                    throw new InvalidOperationException("[HdRezka] Authorization failed. Please check login/password");
+                }
+
+                cookies = cookieStrings
+                    .Select(x => x.Split(';').First())
+                    .Where(x => x != "dle_user_id=deleted" && x != "dle_password=deleted")
+                    .ToArray();
+                cache.Set(cacheAuthKey, cookies, DateTime.Now.AddHours(8));
+            }
+
+            client.DefaultRequestHeaders.Add("Cookie", string.Join("; ", cookies));
+        }
+
         public record HdRezkaSearchResult(Uri Url, string[] Titles, string[] AdditionalTitles, int StartYear, int? EndYear, HdRezkaMediaType Type) {
             public IEnumerable<string> GetSanitizedTitles() {
                 foreach(var title in Titles) {
@@ -351,14 +400,15 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             Series = 2
         }
 
-        public partial class HdRezkaApiResponse {
+        public class HdRezkaApiResponseBase {
             [System.Text.Json.Serialization.JsonPropertyName("success")]
             public bool Success { get; set; }
 
             [System.Text.Json.Serialization.JsonPropertyName("message")]
             public string Message { get; set; }
+        }
 
-
+        public partial class HdRezkaApiResponse : HdRezkaApiResponseBase {
             [System.Text.Json.Serialization.JsonPropertyName("quality")]
             public string Quality { get; set; }
 

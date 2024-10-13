@@ -21,7 +21,7 @@ namespace Void.EXStremio.Web.Providers.Media.Hdvb {
         const string baseSearchUri = "https://apivb.info/api/videos.json?token=[token]&id_kp=[id]";
         readonly HdvbConfig config;
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_API_SEARCH;
         readonly string CACHE_KEY_STREAMS;
 

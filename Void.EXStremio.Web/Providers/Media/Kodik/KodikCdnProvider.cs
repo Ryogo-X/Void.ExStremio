@@ -26,7 +26,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
         const string baseSearchImdbUri = "https://kodikapi.com/search?token=[token]&imdb_id=[id]&with_episodes=true";
         const string baseSearchKpUri = "https://kodikapi.com/search?token=[token]&kinopoisk_id=[id]&with_episodes=true";
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_API_SEARCH_KP;
         readonly string CACHE_KEY_API_SEARCH_IMDB;
         readonly string CACHE_KEY_STREAMS;

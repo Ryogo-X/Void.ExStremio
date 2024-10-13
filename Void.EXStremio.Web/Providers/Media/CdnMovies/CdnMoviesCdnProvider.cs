@@ -24,7 +24,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
 
         readonly CdnMoviesConfig config;
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(8 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_API_SEARCH_KP;
         readonly string CACHE_KEY_API_SEARCH_IMDB;
         readonly string CACHE_KEY_STREAMS;
