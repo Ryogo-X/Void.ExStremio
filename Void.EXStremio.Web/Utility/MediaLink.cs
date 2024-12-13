@@ -22,7 +22,7 @@ namespace Void.EXStremio.Web.Utility {
                 return SourceUri;
             } else {
                 var uriBytes = Encoding.UTF8.GetBytes(SourceUri.ToString());
-                var encodedUri = Convert.ToBase64String(uriBytes);
+                var encodedUri = Uri.EscapeDataString(Convert.ToBase64String(uriBytes));
                 return new Uri($"/stream/play/{encodedUri}?source={SourceType}&format={FormatType}&quality={Quality}", UriKind.Relative);
             }
         }

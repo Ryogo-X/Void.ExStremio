@@ -67,7 +67,7 @@ namespace Void.EXStremio.Models {
             Environment.SetEnvironmentVariable(HdvbConfig.CONFIG_API_KEY, HdvbApiKey);
             Environment.SetEnvironmentVariable(CdnMoviesConfig.CONFIG_API_KEY, CdnMoviesApiKey);
             Environment.SetEnvironmentVariable(AshdiConfig.CONFIG_API_KEY, AshdiApiKey);
-            Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY, HdRezkaHostUri.ToString());
+            Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY, HdRezkaHostUri?.ToString());
             Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_USER_KEY, HdRezkaUser);
             Environment.SetEnvironmentVariable(HdRezkaConfig.CONFIG_PASSWORD_KEY, HdRezkaPassword);
         }

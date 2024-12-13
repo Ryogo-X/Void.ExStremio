@@ -89,7 +89,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
             return id.StartsWith(PREFIX);
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             id = id.Replace(PREFIX, "");
             var uriString = baseSearchKpUri
                     .Replace("[token]", config.ApiKey)
@@ -120,12 +120,13 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                 .Replace("[episode]", episode?.ToString());
             var mediaStreams = cache.Get<MediaStream[]>(ckStreams);
             if (mediaStreams == null) {
-                var meta = searchResponse.Data.First();
-                var iframeUri = meta.Uri;
+                var metaData = searchResponse.Data.First();
+                var iframeUri = metaData.Uri;
 
                 using (var client = GetHttpClient()) {
-                    client.DefaultRequestHeaders.Referrer = new Uri("https://google.com/");
-                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0");
+                    //client.DefaultRequestHeaders.Referrer = new Uri("https://google.com/");
+                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0");
+                    client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
                     client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("ru-RU,ru;q=0.5");
                     var response = await client.GetAsync(iframeUri);
                     var html = await response.Content.ReadAsStringAsync();
@@ -162,7 +163,7 @@ namespace Void.EXStremio.Web.Providers.Media.CdnMovies {
                             foreach (var mediaLink in mediaLinks) {
                                 var mediaStream = new MediaStream() {
                                     Name = $"[{ServiceName.ToUpperInvariant()}]\n[{mediaLink.Quality}p]",
-                                    Title = (string.IsNullOrWhiteSpace(meta.OriginalTitle) ? meta.Title : $"{meta.Title} / {meta.OriginalTitle}") + $"\n{item.Title}",
+                                    Title = (string.IsNullOrWhiteSpace(metaData.OriginalTitle) ? metaData.Title : $"{metaData.Title} / {metaData.OriginalTitle}") + $"\n{item.Title}",
                                     Url = new MediaLink(new Uri(mediaLink.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, mediaLink.Quality, MediaProxyType.Proxy).GetUri().ToString()
                                 };
                                 newMediaStreams.Add(mediaStream);

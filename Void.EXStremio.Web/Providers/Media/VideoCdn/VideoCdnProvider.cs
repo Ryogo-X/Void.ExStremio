@@ -98,7 +98,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
             return true;
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             var isImdb = id.StartsWith(IMDB_PREFIX);
             var isKp = id.StartsWith(KP_PREFIX);
 
@@ -150,7 +150,7 @@ namespace Void.EXStremio.Web.Providers.Media.VideoCdn {
             return mediaStreams;
         }
 
-        async Task<MediaStream[]> GetStreams(Uri iframeUri, int? season = null, int? episode = null) {
+        async Task<MediaStream[]> GetStreams(Uri iframeUri, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             using (var client = GetHttpClient()) {
                 var html = await client.GetStringAsync(iframeUri);
                 var htmlDocument = new HtmlDocument();

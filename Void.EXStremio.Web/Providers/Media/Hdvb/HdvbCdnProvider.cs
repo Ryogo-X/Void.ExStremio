@@ -44,7 +44,7 @@ namespace Void.EXStremio.Web.Providers.Media.Hdvb {
             return false;
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             if (id.StartsWith(PREFIX)) { id = id.Replace(PREFIX, ""); }
 
             var ckSearch = CACHE_KEY_API_SEARCH.Replace("[id]", id);

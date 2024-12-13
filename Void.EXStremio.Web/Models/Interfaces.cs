@@ -34,7 +34,13 @@ namespace Void.EXStremio.Web.Models {
 
         bool CanGetStreams(string id);
         bool CanGetMedia(MediaLink link);
-        Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null);
+        Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null);
         Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null);
+    }
+
+    interface IInitializableProvider {
+        bool IsInitialized { get; }
+        bool IsReady { get; }
+        Task Initialize();
     }
 }

@@ -111,17 +111,17 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             return id.StartsWith(PREFIX);
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             id = id.Replace(PREFIX, "");
             var uri = new Uri(config.HostUri, id);
 
             var ckMeta = CACHE_KEY_ITEM_METADATA.Replace("[uri]", uri.ToString());
-            var meta = cache.Get<HdRezkaApi.HdRezkaMetadata>(ckMeta);
-            if (meta == null) {
-                meta = await apiClient.GetMetadata(uri);
+            var hdMeta = cache.Get<HdRezkaApi.HdRezkaMetadata>(ckMeta);
+            if (hdMeta == null) {
+                hdMeta = await apiClient.GetMetadata(uri);
                 cache.Set(ckMeta, meta, DEFAULT_EXPIRATION);
             }
-            if (season.HasValue && episode.HasValue && !meta.IsStandaloneTitle() && meta.GetTvSeason() != season) { return []; }
+            if (season.HasValue && episode.HasValue && !hdMeta.IsStandaloneTitle() && hdMeta.GetTvSeason() != season) { return []; }
 
             var ckStreams = CACHE_KEY_STREAMS
                 .Replace("[id]", id)
@@ -132,7 +132,7 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
                 var newMediaStreams = new List<MediaStream>();
                 var streamUrls = new List<string>();
                 if (season.HasValue && episode.HasValue) {
-                    foreach (var item in meta.Details) {
+                    foreach (var item in hdMeta.Details) {
                         var streams = await apiClient.GetSeriesEpisodeStreams(uri, item.Id, item.TranslatorId, season.Value, episode.Value);
                         foreach (var stream in streams) {
                             if (streamUrls.Contains(stream.Url)) { continue; }
@@ -147,14 +147,14 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
                         }
                     }
                 } else {
-                    foreach (var item in meta.Details) {
+                    foreach (var item in hdMeta.Details) {
                         var streams = await apiClient.GetMovieStreams(uri, item.Id, item.TranslatorId, item.IsCamrip, item.HasAds, item.IsDirectorCut);
                         foreach (var stream in streams) {
                             if (streamUrls.Contains(stream.Url)) { continue; }
 
                             var mediaStream = new MediaStream() {
                                 Name = $"[{ServiceName.ToUpperInvariant()}]\n[{stream.Quality}p]",
-                                Title = (string.IsNullOrWhiteSpace(meta.OriginalTitle) ? meta.Title : $"{meta.Title} / {meta.OriginalTitle}") + $"\n{item.Title}",
+                                Title = (string.IsNullOrWhiteSpace(hdMeta.OriginalTitle) ? hdMeta.Title : $"{hdMeta.Title} / {hdMeta.OriginalTitle}") + $"\n{item.Title}",
                                 Url = new MediaLink(new Uri(stream.Url), ServiceName.ToLowerInvariant(), MediaFormatType.MP4, stream.Quality, MediaProxyType.Proxy).GetUri().ToString()
                             };
                             newMediaStreams.Add(mediaStream);

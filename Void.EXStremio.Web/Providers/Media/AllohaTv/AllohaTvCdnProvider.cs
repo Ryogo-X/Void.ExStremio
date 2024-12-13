@@ -41,7 +41,7 @@ namespace Void.EXStremio.Web.Providers.Media.AllohaTv {
                 var json = await response.Content.ReadAsStringAsync();
                 var searchResponse = await JsonSerializerExt.DeserializeAsync<AllohaTvSearchResponse>(json);
 
-                var kpId = searchResponse?.Data?.KpId.ToString();
+                var kpId = searchResponse?.Data?.KpId?.ToString();
                 return string.IsNullOrWhiteSpace(kpId) ? null : PREFIX + kpId;
             }
         }

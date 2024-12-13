@@ -50,10 +50,13 @@ namespace Void.EXStremio.Web.Models {
 
         public BehaviorHints BehaviorHints { get; set; }
 
+        public string ProviderName { get; set; }
+        public string CdnName { get; set; }
+
         public string GetOriginalUrl() {
             var uri = Regex.Match(Url ?? "", "/stream/play/(?<uri>[^?]+)\\?").Groups["uri"].Value;
             if (!string.IsNullOrEmpty(uri)) {
-                return Encoding.UTF8.GetString(Convert.FromBase64String(uri));
+                return Encoding.UTF8.GetString(Convert.FromBase64String(Uri.UnescapeDataString(uri)));
             }
 
             return Url;
@@ -67,12 +70,11 @@ namespace Void.EXStremio.Web.Models {
             return parts[0];
         }
 
-        // TODO: add explicit field for this
-        public string GetQuality() {
-            if (string.IsNullOrWhiteSpace(Name)) { return null; }
+        public int GetQuality() {
+            var match = Regex.Match(Name, @"\[(?<num>[0-9]{3,4})p\]");
+            if (!match.Success) { return 0; }
 
-            var parts = Name.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            return parts[1];
+            return int.Parse(match.Groups["num"].Value);
         }
 
         // TODO: add explicit field for this

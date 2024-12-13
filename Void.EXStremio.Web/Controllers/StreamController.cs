@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.IO;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -34,6 +35,19 @@ namespace Void.EXStremio.Web.Controllers {
         // GET /stream/movie/tt0032138
         [HttpGet("/stream/{type}/{sourceId}")]
         public async Task<JsonResult> GetAsync(string type, string sourceId) {
+            var mProviders = HttpContext.RequestServices
+                .GetServices<IMediaProvider>()
+                .Where(x => x is IInitializableProvider)
+                .Select(x => (IInitializableProvider)x)
+                .Where(x => !x.IsInitialized);
+            await Parallel.ForEachAsync(mProviders, async (x, _) => {
+                try {
+                    await x.Initialize();
+                } catch (Exception ex) {
+                    logger?.LogError(ex, $"[{nameof(StreamController)}] -> Failed to initialize provider {x.GetType().Name}");
+                }
+            });
+
             var parts = sourceId.Replace(".json", "").Split(':');
 
             sourceId = parts[0];
@@ -45,9 +59,9 @@ namespace Void.EXStremio.Web.Controllers {
             }
             var ids = new List<string> { sourceId };
 
+            ExtendedMeta meta = null;
             if (sourceId.StartsWith("tt")) {
                 var imdbId = sourceId;
-                ExtendedMeta meta = null;
 
                 // get IMDB meta
                 {
@@ -156,15 +170,20 @@ namespace Void.EXStremio.Web.Controllers {
                     }
                 }
             }
+            if (meta != null) {
+                meta.KpId = ids.FirstOrDefault(x => x.StartsWith("kp"));
+            }
 
             var streams = new List<MediaStream>();
             var streamProviders = HttpContext.RequestServices.GetServices<IMediaProvider>();
             await Parallel.ForEachAsync(streamProviders, async (streamProvider, token) => {
+                if (streamProvider is IInitializableProvider initializableProvider && !initializableProvider.IsReady) { return; }
+
                 foreach(var id in ids) {
                     if (!streamProvider.CanGetStreams(id)) { continue; }
 
                     try {
-                        var newStreams = await streamProvider.GetStreams(id, season, episode);
+                        var newStreams = await streamProvider.GetStreams(id, season, episode, meta);
                         if (!newStreams.Any()) { continue; }
 
                         lock (streams) {
@@ -174,20 +193,33 @@ namespace Void.EXStremio.Web.Controllers {
                         break;
                     } catch (Exception ex) {
                         logger.LogError(ex, $"{streamProvider.GetType().Name} error retrieving streams for id: {id}.\n{ex}");
-                        // TODO: logging?
                     }
                 }
             });
 
-            // selecting minimum 480p quality
-            streams.RemoveAll(stream => {
+            var hasHdStreams = streams.Any(stream => {
                 var qualityString = Regex.Match(stream.Name, "(?<quality>[0-9]+)p").Groups["quality"].Value;
-                if (!int.TryParse(qualityString, out var quality)) { return false; }
+                if (!int.TryParse(qualityString, out var quality)) { return true; }
 
-                return quality < 480;
+                return quality > 640;
             });
-            
+            if (hasHdStreams) {
+                streams.RemoveAll(stream => {
+                    var qualityString = Regex.Match(stream.Name, "(?<quality>[0-9]+)p").Groups["quality"].Value;
+                    if (!int.TryParse(qualityString, out var quality)) { return false; }
 
+                    return quality < 640;
+                });
+            }
+            var duplicateStreams = new List<MediaStream>();
+            var streamGroups = streams.GroupBy(x => x.CdnName).Where(x => !string.IsNullOrWhiteSpace(x.Key));
+            foreach (var streamGroup in streamGroups) {
+                var providerNames = streamGroup.Select(x => x.ProviderName).Distinct();
+                foreach(var providerName in providerNames.Skip(1)) {
+                    streams.RemoveAll(stream => stream.CdnName == streamGroup.Key && stream.ProviderName == providerName);
+                }
+            }
+            
             // transform relative urls to absolute urls
             foreach (var stream in streams) {
                 if (stream.Url.StartsWith("http")) { continue; }
@@ -201,6 +233,17 @@ namespace Void.EXStremio.Web.Controllers {
                     BingeGroup = $"exstremio | {stream.GetCdnSource()} | {stream.GetQuality()} | {stream.GetTranslation()}"
                 };
             }
+            streams.Sort((x, y) => { 
+                if (x.CdnName != y.CdnName) {
+                    return x.CdnName?.First() > y.CdnName?.First() ? 1 : -1;
+                }
+
+                var xQuality = x.GetQuality();
+                var yQuality = y.GetQuality();
+                if (xQuality == yQuality) { return 0; }
+
+                return xQuality > yQuality ? -1 : 1;
+            });
 
             return new JsonResult(new {
                 streams = streams
@@ -210,7 +253,7 @@ namespace Void.EXStremio.Web.Controllers {
         [HttpGet("/stream/play/{encodedUrl}")]
         [HttpHead("/stream/play/{encodedUrl}")]
         public async Task<FileResult> Play(string encodedUrl, [FromQuery]string source, [FromQuery]MediaFormatType format, [FromQuery]string quality) {
-            var uriString = Encoding.UTF8.GetString(Convert.FromBase64String(encodedUrl));
+            var uriString = Encoding.UTF8.GetString(Convert.FromBase64String(Uri.UnescapeDataString(encodedUrl)));
             var mediaLink = new MediaLink(new Uri(uriString), source, format, quality);
 
             var mediaProviders = HttpContext.RequestServices.GetServices<IMediaProvider>();

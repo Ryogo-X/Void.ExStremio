@@ -14,8 +14,8 @@ using Void.EXStremio.Web.Providers.Media.Collaps;
 using Void.EXStremio.Web.Providers.Media.HdRezka;
 using Void.EXStremio.Web.Providers.Media.Hdvb;
 using Void.EXStremio.Web.Providers.Media.Kodik;
+using Void.EXStremio.Web.Providers.Media.Lampa;
 using Void.EXStremio.Web.Providers.Media.VideoCdn;
-using Void.EXStremio.Web.Providers.Media.Zetflix;
 using Void.EXStremio.Web.Providers.Metadata;
 using Void.EXStremio.Web.Utility;
 
@@ -149,7 +149,7 @@ namespace Void.EXStremio.Web {
             }
 
             var hdvbApiKey = Environment.GetEnvironmentVariable(HdvbConfig.CONFIG_API_KEY);
-            if (!string.IsNullOrEmpty(collapsApiKey)) {
+            if (!string.IsNullOrEmpty(hdvbApiKey)) {
                 serviceCollection.AddSingleton(_ => new HdvbConfig(hdvbApiKey));
                 serviceCollection.AddSingleton<IMediaProvider, HdvbCdnProvider>();
                 serviceCollection.AddHttpClient(nameof(HdvbCdnProvider), httpClient => {
@@ -216,13 +216,26 @@ namespace Void.EXStremio.Web {
                 logger?.LogWarning("[INIT] Ashdi provider not initialized - api key is missing.");
             }
 
-            serviceCollection.AddSingleton<IMediaProvider, ZetflixCdnProvider>();
-            serviceCollection.AddHttpClient(nameof(ZetflixCdnProvider), httpClient => {
-                httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
-                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
-            }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
-                AllowAutoRedirect = true
-            });
+            // Lampa
+            {
+                serviceCollection.AddHttpClient(nameof(LampaMediaProvider), httpClient => {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                    httpClient.Timeout = TimeSpan.FromSeconds(15);
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AllowAutoRedirect = true
+                });
+
+                
+                serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaLandProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaVautiouhProvider>();
+
+                //serviceCollection.AddSingleton<IMediaProvider, LampaBwaProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaByProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaLampacProvider>();
+            }
         }
     }
 }

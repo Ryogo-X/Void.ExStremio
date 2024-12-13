@@ -91,7 +91,7 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
             return PREFIX + kpId;
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             if (id.StartsWith(PREFIX)) { id = id.Replace(PREFIX, ""); }
 
             var ckSearchKp = CACHE_KEY_API_SEARCH_KP
@@ -143,6 +143,9 @@ namespace Void.EXStremio.Web.Providers.Media.Kodik {
                         } else {
                             mediaStream.Title = string.IsNullOrWhiteSpace(responseItem.TitleOriginal) ? responseItem.Title : $"{responseItem.Title} / {responseItem.TitleOriginal}\n{responseItem.Translation.Title}";
                         }
+
+                        mediaStream.ProviderName = ServiceName;
+                        mediaStream.CdnName = ServiceName.ToLower();
                     }
 
                     cache.Set(ckStreams, mediaStreams, DEFAULT_EXPIRATION);

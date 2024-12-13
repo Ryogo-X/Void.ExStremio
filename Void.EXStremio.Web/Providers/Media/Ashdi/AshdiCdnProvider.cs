@@ -83,7 +83,7 @@ namespace Void.EXStremio.Web.Providers.Media.Ashdi {
             return id.StartsWith(KP_PREFIX);
         }
 
-        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null) {
+        public async Task<MediaStream[]> GetStreams(string id, int? season = null, int? episode = null, ExtendedMeta meta = null) {
             // TODO: FIX
 
             //id = id.Replace(KP_PREFIX, "");

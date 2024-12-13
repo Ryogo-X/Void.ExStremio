@@ -41,7 +41,7 @@ namespace Void.EXStremio.Web.Providers.Media {
 
         }
 
-        async Task<MediaStream[]> GetDashPlaylistStreams(Uri playlistUri) {
+        protected async Task<MediaStream[]> GetDashPlaylistStreams(Uri playlistUri) {
             using (var client = GetHttpClient()) {
                 var xml = await client.GetStringAsync(playlistUri);
                 var document = XDocumentExt.Load(xml);
@@ -64,21 +64,34 @@ namespace Void.EXStremio.Web.Providers.Media {
             }
         }
 
-        async Task<MediaStream[]> GetHlsPlaylistStreams(Uri playlistUri) {
+        protected async Task<MediaStream[]> GetHlsPlaylistStreams(Uri playlistUri, bool proxyStream = true) {
+            var streams = new List<MediaStream>();
+
             using (var client = GetHttpClient()) {
                 var content = await client.GetStringAsync(playlistUri);
-                var matches = Regex.Matches(content, @"#EXT-X-STREAM-INF:.*RESOLUTION=[0-9]+x(?<vres>[0-9]+).*");
-                var qualityItems = matches.Select(x => x.Groups["vres"].Value).Distinct().Select(x => int.Parse(x));
+                var lines = content.Split('\n');
+                for (var i = 0; i < lines.Length; i++) {
+                    var line = lines[i];
+                    if (!line.StartsWith("#EXT-X-STREAM-INF")) { continue; }
 
-                return qualityItems
-                    .OrderByDescending(x => x)
-                    .Select(quality => {
-                        return new MediaStream() {
-                            Name = $"[{ServiceName.ToUpperInvariant()}]\n[{quality}p]",
-                            Url = new MediaLink(playlistUri, ServiceName, MediaFormatType.HLS, quality.ToString(), MediaProxyType.Proxy).ToString()
-                        };
-                    }).ToArray();
+                    var match = Regex.Match(line, @"#EXT-X-STREAM-INF:.*RESOLUTION=[0-9]+x(?<vres>[0-9]+).*");
+                    var quality = int.Parse(match.Groups["vres"].Value);
+                    var url = lines[i + 1];
+                    if (url.StartsWith(".") || url.StartsWith("/")) {
+                        url = new Uri(playlistUri, url).ToString();
+                    }
+                    if (proxyStream) {
+                        url = new MediaLink(playlistUri, ServiceName, MediaFormatType.HLS, quality.ToString(), MediaProxyType.Proxy).ToString();
+                    }
+
+                    streams.Add(new MediaStream() {
+                        Name = $"[{ServiceName.ToUpperInvariant()}]\n[{quality}p]",
+                        Url = url
+                    });
+                }
             }
+
+            return streams.ToArray();
         }
         #endregion
 

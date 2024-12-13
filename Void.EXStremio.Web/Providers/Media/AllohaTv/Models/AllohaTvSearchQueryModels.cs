@@ -10,7 +10,7 @@ namespace Void.EXStremio.Web.Providers.Media.AllohaTv.Models {
 
     class AllohaTvSearchItemResponse {
         [JsonPropertyName("id_kp")]
-        public long KpId { get; set; }
+        public long? KpId { get; set; }
         [JsonPropertyName("id_imdb")]
         public string ImdbId { get; set; }
         [JsonPropertyName("id_tmdb")]
