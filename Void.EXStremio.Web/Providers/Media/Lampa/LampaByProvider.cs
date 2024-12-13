@@ -11,6 +11,12 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             get { return new Uri("https://bylampa.online/"); }
         }
 
+        protected override string[] AllowedCdn {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
         public LampaByProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
     }
 }

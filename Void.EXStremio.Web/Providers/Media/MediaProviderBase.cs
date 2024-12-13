@@ -68,7 +68,10 @@ namespace Void.EXStremio.Web.Providers.Media {
             var streams = new List<MediaStream>();
 
             using (var client = GetHttpClient()) {
-                var content = await client.GetStringAsync(playlistUri);
+                var response = await client.GetAsync(playlistUri);
+                // uri might change after redirect
+                playlistUri = response.RequestMessage.RequestUri;
+                var content = await response.Content.ReadAsStringAsync();
                 var lines = content.Split('\n');
                 for (var i = 0; i < lines.Length; i++) {
                     var line = lines[i];

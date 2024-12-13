@@ -11,6 +11,11 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             get { return new Uri("http://80.85.247.249:9118/"); }
         }
 
+        protected override string[] AllowedCdn {
+            get {
+                throw new NotImplementedException();
+            }
+        }
         public LampaLampacProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
     }
 }

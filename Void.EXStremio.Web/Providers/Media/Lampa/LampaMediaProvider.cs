@@ -8,8 +8,6 @@ using System.Text.RegularExpressions;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     abstract class LampaMediaProvider : MediaProviderBase, IMediaProvider, IInitializableProvider {
-        readonly string[] bannedProviders = ["filmix", "rezka", "jac", "pidtor", "cdnvideohub"];
-
         protected const string KP_PREFIX = "kp";
         protected const string IMDB_PREFIX = "tt";
 
@@ -29,6 +27,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected abstract Uri BaseUri { get; }
         protected virtual string InitUriPath { get; } = "/lite/events";
+
+        protected abstract string[] AllowedCdn { get; }
 
         protected LampaMediaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) {
             CACHE_KEY_MOVIE_STREAMS = $"{ServiceName}:STREAMS:[uri]";
@@ -76,7 +76,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
                     var providers = sources
                         .Select(x => new Uri(x.Url).GetLeftPart(UriPartial.Path))
-                        .Where(x => !bannedProviders.Any(p => x.Contains(p)))
+                        .Where(x => AllowedCdn.Any(p => x.Contains(p)))
                         .Distinct().OrderBy(x => x).ToArray();
                     videoSources = providers.Select(url => {
                         var src = sources.First(x => x.Url.Contains(url));
@@ -124,7 +124,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                 if (!string.IsNullOrWhiteSpace(meta.KpId)) {
                     uriString += $"&kinopoisk_id={meta.KpId.Replace("kp", "")}";
                 }
-                uriString += $"&original_title={meta.Name}&year={meta.Year}";
+                uriString += $"&original_title={meta.Name}&year={meta.GetYear()}";
                 if (meta.LocalizedTitles.Any(x => x.LangCode == "ru")) {
                     uriString += $"&title={meta.LocalizedTitles.First(x => x.LangCode == "ru").Title}";
                 }

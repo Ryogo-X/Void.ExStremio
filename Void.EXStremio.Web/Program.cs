@@ -231,6 +231,7 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaLandProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaVautiouhProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlackProvider>();
 
                 //serviceCollection.AddSingleton<IMediaProvider, LampaBwaProvider>();
                 //serviceCollection.AddSingleton<IMediaProvider, LampaByProvider>();

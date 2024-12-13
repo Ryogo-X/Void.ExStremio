@@ -11,6 +11,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             get { return new Uri("https://showy.online/"); }
         }
 
+        protected override string[] AllowedCdn {
+            get { return ["hdvb", "remux", "redheadsound", "anilibria", "animebesst", "animelib"]; }
+        }
+
         public LampaShowyProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
     }
 }
