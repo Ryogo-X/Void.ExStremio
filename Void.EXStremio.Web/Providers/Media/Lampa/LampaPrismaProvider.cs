@@ -14,7 +14,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected override string InitUriPath { get; } = "/lite/events";
 
         protected override string[] AllowedCdn {
-            get { return ["megatv", "ashdi", "hdvb", "kinotochka", "animebesst", "animelib", "moonanime"]; }
+            //get { return ["megatv", "ashdi", "hdvb", "kinotochka", "animebesst", "animelib", "moonanime"]; }
+            get { return ["kinotochka", "animebesst", "animelib", "moonanime"]; }
         }
 
         public LampaPrismaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }

@@ -43,7 +43,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             var sources = new List<LampaSrc>();
 
             try {
-                using (var client = GetHttpClient()) {
+                using (var client = GetHttpClientEx()) {
                     client.Timeout = TimeSpan.FromSeconds(30);
 
                     // base
@@ -145,8 +145,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             var streams = new List<MediaStream>();
 
             try {
-                using (var client = GetHttpClient()) {
-                    var json = await client.GetStringAsync(uri);
+                using (var client = GetHttpClientEx()) {
+                    var json = await client.GetStringAsync(uri, true, DEFAULT_EXPIRATION);
                     if (string.IsNullOrWhiteSpace(json)) { return []; }
 
                     var apiResponse = await JsonSerializerExt.DeserializeAsync<LampaApiResponse>(json);
@@ -162,7 +162,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                         var seasonItems = seasonResponse.GetItems();
                         var seasonItem = seasonItems.FirstOrDefault(x => x.Id == season);
                         if (seasonItem != null) { 
-                            json = await client.GetStringAsync(seasonItem.Url + "&rjson=true");
+                            json = await client.GetStringAsync(seasonItem.Url + "&rjson=true", true, DEFAULT_EXPIRATION);
                             var episodeApiResponse = await JsonSerializerExt.DeserializeAsync<LampaEpisodeApiResponse>(json);
                             if (episodeApiResponse.Type != "similar") {
                                 var translators = episodeApiResponse.Translators;
@@ -180,7 +180,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                                     }
                                 }
                                 foreach (var translator in translators) {
-                                    json = await client.GetStringAsync(translator.Url + "&rjson=true");
+                                    json = await client.GetStringAsync(translator.Url + "&rjson=true", true, DEFAULT_EXPIRATION);
                                     episodeApiResponse = await JsonSerializerExt.DeserializeAsync<LampaEpisodeApiResponse>(json);
                                     var episodeItems = episodeApiResponse.GetItems();
                                     var episodeItem = episodeItems.FirstOrDefault(x => x.Episode == episode);
@@ -227,6 +227,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         async Task<MediaStream[]> GetStreams(LampaCallPlayApiResponse apiResponse, string balancer) {
             if (apiResponse.Title?.Contains("Заблокировано правообладателем") == true || apiResponse.Translate?.Contains("Заблокировано правообладателем") == true) { return []; }
+            if (cache.TryGetValue<MediaStream[]>(apiResponse.GetId(), out var streamItems)) { return streamItems; }
 
             var streams = new List<MediaStream>();
             
@@ -253,34 +254,32 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                 } else {
                     var name = $"[{balancer.ToUpper()}]"; //$"[{balancer?.ToUpper()} / {ServiceName.ToUpperInvariant()}]";
                     if (apiResponse.Url.Contains(".m3u")) {
-                        using (var client = GetHttpClient()) {
-                            var items = await GetHlsPlaylistStreams(new Uri(apiResponse.Url), false);
-                            if (items.Any()) {
-                                foreach (var item in items) {
-                                    var quality = GetQuality(item.Name);
-
-                                    streams.Add(new MediaStream {
-                                        ProviderName = ServiceName,
-                                        CdnName = balancer,
-                                        Name = $"{name}\n[{quality}]",
-                                        Title = apiResponse.Translate ?? apiResponse.Title,
-                                        Url = item.Url
-                                    });
-                                }
-                            } else {
-                                var quality = GetQuality(apiResponse.Details) ?? GetQuality(apiResponse.Url) ?? GetQuality(apiResponse.Title) ?? GetQuality(apiResponse.Translate);
-                                if (!string.IsNullOrWhiteSpace(quality)) {
-                                    name = $"{name}\n[{quality}]";
-                                }
+                        var items = await GetHlsPlaylistStreams(new Uri(apiResponse.Url), false);
+                        if (items.Any()) {
+                            foreach (var item in items) {
+                                var quality = GetQuality(item.Name);
 
                                 streams.Add(new MediaStream {
                                     ProviderName = ServiceName,
                                     CdnName = balancer,
-                                    Name = name,
+                                    Name = $"{name}\n[{quality}]",
                                     Title = apiResponse.Translate ?? apiResponse.Title,
-                                    Url = apiResponse.Url
+                                    Url = item.Url
                                 });
                             }
+                        } else {
+                            var quality = GetQuality(apiResponse.Details) ?? GetQuality(apiResponse.Url) ?? GetQuality(apiResponse.Title) ?? GetQuality(apiResponse.Translate);
+                            if (!string.IsNullOrWhiteSpace(quality)) {
+                                name = $"{name}\n[{quality}]";
+                            }
+
+                            streams.Add(new MediaStream {
+                                ProviderName = ServiceName,
+                                CdnName = balancer,
+                                Name = name,
+                                Title = apiResponse.Translate ?? apiResponse.Title,
+                                Url = apiResponse.Url
+                            });
                         }
                     } else {
                         var quality = GetQuality(apiResponse.Details) ?? GetQuality(apiResponse.Url) ?? GetQuality(apiResponse.Title) ?? GetQuality(apiResponse.Translate);
@@ -298,8 +297,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                     }
                 }
             } else if (apiResponse.Method == "call") {
-                using (var client = GetHttpClient()) {
-                    var json = await client.GetStringAsync(apiResponse.Url);
+                using (var client = GetHttpClientEx()) {
+                    var json = await client.GetStringAsync(apiResponse.Url, true, DEFAULT_EXPIRATION);
                     var nestedApiResponse = await JsonSerializerExt.DeserializeAsync<LampaCallPlayApiResponse>(json);
 
                     var newStreams = await GetStreams(nestedApiResponse, balancer);
@@ -307,7 +306,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                 }
             }
 
-            return streams.ToArray();
+            streamItems = streams.ToArray();
+            cache.Set(apiResponse.GetId(), streamItems, DEFAULT_EXPIRATION);
+
+            return streamItems;
         }
 
         public Task<IMediaSource> GetMedia(MediaLink link, RangeHeaderValue range = null) {
@@ -317,6 +319,11 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected override HttpClient GetHttpClient() {
             return httpClientFactory.CreateClient(nameof(LampaMediaProvider));
+        }
+
+        HttpClientEx GetHttpClientEx() {
+            var client = GetHttpClient();
+            return new HttpClientEx(client, cache);
         }
 
         string GetQuality(string uri) {
@@ -409,6 +416,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         public int? Season { get; set; }
         [JsonPropertyName("e")]
         public int? Episode { get; set; }
+
+        public string GetId() {
+            return nameof(LampaCallPlayApiResponse) + (Url + string.Join("", Links ?? [])).GetHashCode();
+        }
     }
 
     class LampaLinkApiResponse : ILampaNestedApiResponse {

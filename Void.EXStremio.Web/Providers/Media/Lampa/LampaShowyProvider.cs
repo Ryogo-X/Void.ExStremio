@@ -12,7 +12,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override string[] AllowedCdn {
-            get { return ["hdvb", "remux", "redheadsound", "anilibria", "animebesst", "animelib"]; }
+            //get { return ["hdvb", "remux", "redheadsound", "anilibria", "animebesst", "animelib"]; }
+            get { return ["hdvb", "remux", "redheadsound", "anilibria"]; }
         }
 
         public LampaShowyProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }

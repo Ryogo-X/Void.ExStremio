@@ -13,7 +13,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected override string[] AllowedCdn {
             //"filmix"
-            get { return ["ashdi", "hdvb", "kinotochka", "redheadsound", "zetflix", "remux", "anilibria", "animebesst", "animelib", "animevost"]; }
+            //get { return ["ashdi", "hdvb", "kinotochka", "redheadsound", "zetflix", "remux", "anilibria", "animebesst", "animelib", "animevost"]; }
+            get { return ["ashdi", "zetflix", "animevost"]; }
         }
 
         public LampaVautiouhProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
