@@ -226,7 +226,7 @@ namespace Void.EXStremio.Web {
                     AllowAutoRedirect = true
                 });
 
-                
+                //serviceCollection.AddSingleton<IMediaProvider, LampaByProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaLandProvider>();

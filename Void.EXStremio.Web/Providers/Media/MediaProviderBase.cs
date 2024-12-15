@@ -3,6 +3,7 @@ using System.Text;
 using Void.EXStremio.Web.Utility;
 using Void.EXStremio.Web.Models;
 using Microsoft.Extensions.Caching.Memory;
+using AngleSharp.Dom;
 
 namespace Void.EXStremio.Web.Providers.Media {
     abstract class MediaProviderBase {
@@ -72,17 +73,10 @@ namespace Void.EXStremio.Web.Providers.Media {
                 // uri might change after redirect
                 playlistUri = response.RequestMessage.RequestUri;
                 var content = await response.Content.ReadAsStringAsync();
-                var lines = content.Split('\n');
-                for (var i = 0; i < lines.Length; i++) {
-                    var line = lines[i];
-                    if (!line.StartsWith("#EXT-X-STREAM-INF")) { continue; }
-
-                    var match = Regex.Match(line, @"#EXT-X-STREAM-INF:.*RESOLUTION=[0-9]+x(?<vres>[0-9]+).*");
+                if (content.Contains("EXT-X-MEDIA:TYPE=AUDIO")) {
+                    var match = Regex.Match(content, @"#EXT-X-STREAM-INF:.*RESOLUTION=[0-9]+x(?<vres>[0-9]+).*");
                     var quality = int.Parse(match.Groups["vres"].Value);
-                    var url = lines[i + 1];
-                    if (url.StartsWith(".") || url.StartsWith("/")) {
-                        url = new Uri(playlistUri, url).ToString();
-                    }
+                    var url = playlistUri.ToString();
                     if (proxyStream) {
                         url = new MediaLink(playlistUri, ServiceName, MediaFormatType.HLS, quality.ToString(), MediaProxyType.Proxy).ToString();
                     }
@@ -91,6 +85,27 @@ namespace Void.EXStremio.Web.Providers.Media {
                         Name = $"[{ServiceName.ToUpperInvariant()}]\n[{quality}p]",
                         Url = url
                     });
+                } else {
+                    var lines = content.Split('\n');
+                    for (var i = 0; i < lines.Length; i++) {
+                        var line = lines[i];
+                        if (!line.StartsWith("#EXT-X-STREAM-INF")) { continue; }
+
+                        var match = Regex.Match(line, @"#EXT-X-STREAM-INF:.*RESOLUTION=[0-9]+x(?<vres>[0-9]+).*");
+                        var quality = int.Parse(match.Groups["vres"].Value);
+                        var url = lines[i + 1];
+                        if (url.StartsWith(".") || url.StartsWith("/")) {
+                            url = new Uri(playlistUri, url).ToString();
+                        }
+                        if (proxyStream) {
+                            url = new MediaLink(playlistUri, ServiceName, MediaFormatType.HLS, quality.ToString(), MediaProxyType.Proxy).ToString();
+                        }
+
+                        streams.Add(new MediaStream() {
+                            Name = $"[{ServiceName.ToUpperInvariant()}]\n[{quality}p]",
+                            Url = url
+                        });
+                    }
                 }
             }
 

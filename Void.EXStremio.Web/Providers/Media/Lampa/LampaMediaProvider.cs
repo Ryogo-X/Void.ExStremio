@@ -76,7 +76,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
                     var providers = sources
                         .Select(x => new Uri(x.Url).GetLeftPart(UriPartial.Path))
-                        .Where(x => AllowedCdn.Any(p => x.Contains(p)))
+                        .Where(x => !AllowedCdn.Any() || AllowedCdn.Any(p => x.Contains(p)))
                         .Distinct().OrderBy(x => x).ToArray();
                     videoSources = providers.Select(url => {
                         var src = sources.First(x => x.Url.Contains(url));
@@ -167,7 +167,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                             if (episodeApiResponse.Type != "similar") {
                                 var translators = episodeApiResponse.Translators;
                                 if (translators == null) {
-                                    translators = [new LampaVoiceApiRespinse { 
+                                    translators = [new LampaVoiceApiRespinse {
                                         Method = "episode",
                                         Url = seasonItem.Url,
                                         Active = true,
@@ -187,6 +187,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                                     if (episodeItem != null) {
                                         var newStreams = await GetStreams(episodeItem, balancer);
                                         foreach(var newStream in newStreams) {
+                                            if (newStream.Title?.Contains("translator.Name") == true) { continue; }
+
                                             newStream.Title += $"\n{translator.Name}";
                                         }
 

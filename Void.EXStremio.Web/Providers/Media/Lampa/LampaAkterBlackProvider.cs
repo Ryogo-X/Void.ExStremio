@@ -12,7 +12,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected override string[] AllowedCdn {
             //get { return ["anilibria", "animebesst", "animelib", "ashdi", "filmix", "moonanime", "zetflix", "lumex", "hdvb", "kinoukr", "fancdn", "redheadsound", "vibix", "remux"]; }
-            get { return ["filmix", "zetflix", "lumex", "kinoukr", "fancdn", "vibix"]; }
+            get { return ["zetflix", "lumex", "kinoukr", "fancdn", "vibix"]; }
         }
 
         public LampaAkterBlackProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
