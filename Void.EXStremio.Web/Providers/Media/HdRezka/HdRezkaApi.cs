@@ -276,6 +276,7 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
             using (var client = getHttpClient()) {
                 await HandleAuth(client);
 
+                client.DefaultRequestHeaders.Add("Accept", "*/*");
                 client.DefaultRequestHeaders.Add("Referer", refererUrl.ToString());
                 var data = await SimpleRetry.Retry(
                     async () => {
