@@ -187,7 +187,12 @@ namespace Void.EXStremio.Web.Controllers {
                         if (!newStreams.Any()) { continue; }
 
                         lock (streams) {
-                            streams.AddRange(newStreams);
+                            foreach(var newStream in newStreams) {
+                                var stream = streams.FirstOrDefault(x => x.CdnName == newStream.CdnName && x.Name == newStream.Name && x.Title == newStream.Title);
+                                if (stream != null) { continue; }
+
+                                streams.Add(newStream);
+                            }
                         }
 
                         break;

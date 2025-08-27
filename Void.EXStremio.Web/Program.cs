@@ -17,7 +17,6 @@ using Void.EXStremio.Web.Providers.Media.Kodik;
 using Void.EXStremio.Web.Providers.Media.Lampa;
 using Void.EXStremio.Web.Providers.Media.VideoCdn;
 using Void.EXStremio.Web.Providers.Metadata;
-using Void.EXStremio.Web.Utility;
 
 namespace Void.EXStremio.Web {
     public class Program {
