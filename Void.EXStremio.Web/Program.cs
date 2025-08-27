@@ -85,7 +85,7 @@ namespace Void.EXStremio.Web {
         }
 
         static void RegisterProviders(IServiceCollection serviceCollection) {
-            const string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0";
+            const string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0";
             const string acceptLang = "ru-RU,ru;q=0.5";
             var logger = serviceCollection.BuildServiceProvider().GetService<ILogger<Program>>();
 
@@ -164,7 +164,7 @@ namespace Void.EXStremio.Web {
             var hdrHostUrl = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_HOST_URL_KEY);
             var hdrUser = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_USER_KEY);
             var hdrPassword = Environment.GetEnvironmentVariable(HdRezkaConfig.CONFIG_PASSWORD_KEY);
-            if (Uri.TryCreate(hdrHostUrl, UriKind.Absolute, out var hostUri) && !string.IsNullOrWhiteSpace(hdrUser) && !string.IsNullOrWhiteSpace(hdrPassword)) {
+            if (Uri.TryCreate(hdrHostUrl, UriKind.Absolute, out var hostUri)) {
                 serviceCollection.AddSingleton(_ => new HdRezkaConfig(hostUri, hdrUser, hdrPassword));
                 serviceCollection.AddSingleton<ICustomIdProvider, HdRezkaCdnProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, HdRezkaCdnProvider>();

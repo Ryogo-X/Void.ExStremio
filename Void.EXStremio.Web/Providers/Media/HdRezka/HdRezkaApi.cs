@@ -327,6 +327,9 @@ namespace Void.EXStremio.Web.Providers.Media.HdRezka {
         }
 
         public async Task HandleAuth(HttpClient client) {
+            if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password)) { return; }
+
+            //TODO: auth is broken, using wrong cookie?
             if (!cache.TryGetValue(cacheAuthKey, out string[] cookies)) {
                 var vars = new List<KeyValuePair<string, string>> {
                     new KeyValuePair<string, string>("login_name", user),
