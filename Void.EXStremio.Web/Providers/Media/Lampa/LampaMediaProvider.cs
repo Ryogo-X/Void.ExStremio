@@ -15,8 +15,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         readonly string CACHE_KEY_MOVIE_STREAMS;
         readonly string CACHE_KEY_TV_STREAMS;
 
-        // ?life=true
         protected const string initBase = "?life=true";
+        protected const string initBaseOff = "?life=false";
         protected const string initMovieUriArgs = "?id=603&imdb_id=tt0133093&kinopoisk_id=301&serial=0";
         protected const string initTvUriArgs = "?id=1396&imdb_id=tt0903747&kinopoisk_id=404900&serial=1";
         protected const string initAnimeUriArgs = "?id=9323&imdb_id=tt0113568&kinopoisk_id=8228&serial=1";
@@ -27,6 +27,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected abstract Uri BaseUri { get; }
         protected virtual string InitUriPath { get; } = "/lite/events";
+        protected virtual string CustomArgs { get; }
 
         protected abstract string[] AllowedCdn { get; }
 
@@ -48,28 +49,35 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
                     // base
                     {
-                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initBase));
+                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initBase + CustomArgs));
+                        var newSources = await JsonSerializerExt.DeserializeAsync<LampaSrc[]>(json);
+                        sources.AddRange(newSources);
+                    }
+
+                    // base off
+                    {
+                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initBaseOff + CustomArgs));
                         var newSources = await JsonSerializerExt.DeserializeAsync<LampaSrc[]>(json);
                         sources.AddRange(newSources);
                     }
 
                     // movie
                     {
-                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initMovieUriArgs));
+                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initMovieUriArgs + CustomArgs));
                         var newSources = await JsonSerializerExt.DeserializeAsync<LampaSrc[]>(json);
                         sources.AddRange(newSources);
                     }
 
                     // tv
                     {
-                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initTvUriArgs));
+                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initTvUriArgs + CustomArgs));
                         var newSources = await JsonSerializerExt.DeserializeAsync<LampaSrc[]>(json);
                         sources.AddRange(newSources);
                     }
 
                     // anime
                     {
-                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initAnimeUriArgs));
+                        var json = await client.GetStringAsync(new Uri(BaseUri, InitUriPath + initAnimeUriArgs + CustomArgs));
                         var newSources = await JsonSerializerExt.DeserializeAsync<LampaSrc[]>(json);
                         sources.AddRange(newSources);
                     }
@@ -132,6 +140,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                     uriString += "&serial=0";
                 } else {
                     uriString += $"&serial=1";
+                }
+
+                if (!string.IsNullOrEmpty(CustomArgs)) {
+                    uriString += CustomArgs;
                 }
 
                 var newStreams = await GetStreams(uriString, videoSource.Balanser, season, episode);

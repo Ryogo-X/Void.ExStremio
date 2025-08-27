@@ -8,13 +8,11 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override Uri BaseUri {
-            get { return new Uri("https://bwa-cloud.apn.monster/"); }
+            get { return new Uri("https://rc.bwa.to/"); }
         }
 
         protected override string[] AllowedCdn {
-            get {
-                throw new NotImplementedException();
-            }
+            get { return []; }
         }
 
         public LampaBwaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }

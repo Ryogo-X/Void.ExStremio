@@ -226,16 +226,10 @@ namespace Void.EXStremio.Web {
                     AllowAutoRedirect = true
                 });
 
-                //serviceCollection.AddSingleton<IMediaProvider, LampaByProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaLandProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaVautiouhProvider>();
                 serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlackProvider>();
-
-                //serviceCollection.AddSingleton<IMediaProvider, LampaBwaProvider>();
-                //serviceCollection.AddSingleton<IMediaProvider, LampaByProvider>();
-                //serviceCollection.AddSingleton<IMediaProvider, LampaLampacProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlack2Provider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaCubProvider>();
             }
         }
     }
