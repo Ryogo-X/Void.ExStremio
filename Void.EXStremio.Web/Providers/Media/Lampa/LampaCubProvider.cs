@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
+using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     class LampaCubProvider : LampaMediaProvider {
@@ -15,9 +16,19 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override string[] AllowedCdn {
-            get { return ["plvideo", "veoveo", "remux", "redheadsound", "hdvb", "kinotochka", "eneyida", "collaps", "collapse-dash", "kodik", "animevost", "animedia", "moonanime", "aniliberty", "animebest"]; }
+            get { 
+                return [
+                    //"kinotochka" - proxy :(
+                    //"plvideo" - proxy :(
+                    //"remux" - proxy :(
+                    //"collaps - proxy :(
+                    //"collapse-dash" - proxy :(
+                    //"animevost" - proxy :(
+                    "veoveo", "redheadsound", "hdvb", "eneyida", "kodik", "animedia", "moonanime", "aniliberty", "animebest"
+                    ]; 
+            }
         }
 
-        public LampaCubProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
+        public LampaCubProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
     }
 }

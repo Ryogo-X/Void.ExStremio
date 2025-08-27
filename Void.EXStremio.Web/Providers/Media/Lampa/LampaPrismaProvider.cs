@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
+using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     class LampaPrismaProvider : LampaMediaProvider {
@@ -16,9 +17,17 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override string[] AllowedCdn {
-            get { return ["aniliberty", "ashdi", "collaps", "collaps-dash", "eneyida", "hdvb", "kinotochka", "lumex", "rezka"]; }
+            get { 
+                return [
+                    //"collaps" - proxy :(
+                    //"collaps-dash" - proxy :(
+                    //"kinotochka" - proxy :(
+                    //"rezka" - proxy :(
+                    "aniliberty", "ashdi", "eneyida", "hdvb", "lumex"
+                    ];
+            }
         }
 
-        public LampaPrismaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
+        public LampaPrismaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
+using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     class LampaAkterBlackProvider : LampaMediaProvider {
@@ -11,11 +12,19 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override string[] AllowedCdn {
-            //get { return ["anilibria", "animebesst", "animelib", "ashdi", "filmix", "moonanime", "zetflix", "lumex", "hdvb", "kinoukr", "fancdn", "redheadsound", "vibix", "remux"]; }
-            //get { return ["zetflix", "lumex", "kinoukr", "fancdn", "vibix"]; }
-            get { return ["animevost", "animedia", "animebest", "aniliberty", "cdnvideohub", "kinotochka", "lumex", "veoveo", "vibix", "zetflix", "hdvb", "kinobase", "plvideo", "remux", "eneyida"]; }
+            get { 
+                return [
+                    //"kinobase" - proxy :(
+                    //"kinotochka" - proxy :(
+                    //"plvideo" - proxy :(
+                    //"remux" - proxy :(
+                    //"animevost" - proxy :(
+                    //"cdnvideohub" - proxy :(
+                    "animedia", "animebest", "aniliberty", "cdnvideohub", "lumex", "veoveo", "vibix", "zetflix", "hdvb", "eneyida"
+                    ]; 
+            }
         }
 
-        public LampaAkterBlackProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
+        public LampaAkterBlackProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
     }
 }

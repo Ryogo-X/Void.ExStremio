@@ -5,6 +5,9 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using System.Xml;
+using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     abstract class LampaMediaProvider : MediaProviderBase, IMediaProvider, IInitializableProvider {
@@ -14,7 +17,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
         readonly string CACHE_KEY_MOVIE_STREAMS;
         readonly string CACHE_KEY_TV_STREAMS;
-
+        readonly ILogger<StreamController> logger;
         protected const string initBase = "?life=true";
         protected const string initBaseOff = "?life=false";
         protected const string initMovieUriArgs = "?id=603&imdb_id=tt0133093&kinopoisk_id=301&serial=0";
@@ -31,9 +34,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
         protected abstract string[] AllowedCdn { get; }
 
-        protected LampaMediaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) {
+        protected LampaMediaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache) {
             CACHE_KEY_MOVIE_STREAMS = $"{ServiceName}:STREAMS:[uri]";
             CACHE_KEY_TV_STREAMS = $"{ServiceName}:STREAMS:TV:[uri]";
+            this.logger = logger;
         }
 
         #region IInitializableProvider
@@ -174,7 +178,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                         var seasonItems = seasonResponse.GetItems();
                         var seasonItem = seasonItems.FirstOrDefault(x => x.Id == season);
                         if (seasonItem != null) { 
-                            json = await client.GetStringAsync(seasonItem.Url + "&rjson=true", true, DEFAULT_EXPIRATION);
+                            json = await client.GetStringAsync(seasonItem.Url + CustomArgs + "&rjson=true", true, DEFAULT_EXPIRATION);
                             var episodeApiResponse = await JsonSerializerExt.DeserializeAsync<LampaEpisodeApiResponse>(json);
                             if (episodeApiResponse.Type != "similar") {
                                 var translators = episodeApiResponse.Translators;
@@ -192,7 +196,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                                     }
                                 }
                                 foreach (var translator in translators) {
-                                    json = await client.GetStringAsync(translator.Url + "&rjson=true", true, DEFAULT_EXPIRATION);
+                                    json = await client.GetStringAsync(translator.Url + CustomArgs + "&rjson=true", true, DEFAULT_EXPIRATION);
                                     episodeApiResponse = await JsonSerializerExt.DeserializeAsync<LampaEpisodeApiResponse>(json);
                                     var episodeItems = episodeApiResponse.GetItems();
                                     var episodeItem = episodeItems.FirstOrDefault(x => x.Episode == episode);
@@ -231,9 +235,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                         return [];
                     }
                 }
-
-            } catch (Exception) {
-                //TODO: logging
+            } catch (Exception ex) {
+                logger.LogError(ex, $"{GetType().Name} error retrieving streams for CDN: {balancer}\nuri: {uri}");
             }
 
             return streams.ToArray();
@@ -278,7 +281,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                                     CdnName = balancer,
                                     Name = $"{name}\n[{quality}]",
                                     Title = apiResponse.Translate ?? apiResponse.Title,
-                                    Url = item.Url
+                                    Url = item.Url + CustomArgs
                                 });
                             }
                         } else {
@@ -312,7 +315,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                 }
             } else if (apiResponse.Method == "call") {
                 using (var client = GetHttpClientEx()) {
-                    var json = await client.GetStringAsync(apiResponse.Url, true, DEFAULT_EXPIRATION);
+                    var json = await client.GetStringAsync(apiResponse.Url + CustomArgs, true, DEFAULT_EXPIRATION);
                     var nestedApiResponse = await JsonSerializerExt.DeserializeAsync<LampaCallPlayApiResponse>(json);
 
                     var newStreams = await GetStreams(nestedApiResponse, balancer);

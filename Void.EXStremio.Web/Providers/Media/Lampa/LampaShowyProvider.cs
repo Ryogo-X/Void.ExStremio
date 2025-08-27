@@ -1,5 +1,5 @@
-﻿
-using Microsoft.Extensions.Caching.Memory;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     class LampaShowyProvider : LampaMediaProvider {
@@ -15,11 +15,9 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected override string CustomArgs { get; } = "&showy_token=9dc8771f-ba96-49e8-a33e-7c86acad54b5";
 
         protected override string[] AllowedCdn {
-            //get { return ["hdvb", "remux", "redheadsound", "anilibria", "animebesst", "animelib"]; }
-            //get { return ["hdvb", "remux", "redheadsound", "anilibria"]; }
-            get { return []; }
+            get { return ["animevost", "hdvb", "remux", "veoveo", "zetflix"]; }
         }
 
-        public LampaShowyProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache) : base(httpClientFactory, cache) { }
+        public LampaShowyProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
     }
 }
