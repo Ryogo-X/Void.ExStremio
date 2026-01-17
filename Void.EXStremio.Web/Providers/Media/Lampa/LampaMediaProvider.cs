@@ -14,7 +14,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected const string KP_PREFIX = "kp";
         protected const string IMDB_PREFIX = "tt";
 
-        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(4 * 60);
+        readonly TimeSpan DEFAULT_EXPIRATION = TimeSpan.FromMinutes(30);
         readonly string CACHE_KEY_MOVIE_STREAMS;
         readonly string CACHE_KEY_TV_STREAMS;
         readonly ILogger<StreamController> logger;
@@ -152,6 +152,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
                 var newStreams = await GetStreams(uriString, videoSource.Balanser, season, episode);
                 mediaStreams.AddRange(newStreams);
+            }
+
+            foreach(var stream in mediaStreams) {
+                stream.Url = stream.Url.Replace("&account_email=rsmail@ukr.net", "");
             }
 
             return mediaStreams.ToArray();

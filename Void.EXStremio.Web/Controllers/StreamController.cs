@@ -237,9 +237,12 @@ namespace Void.EXStremio.Web.Controllers {
                     BingeGroup = $"exstremio | {stream.GetCdnSource()} | {stream.GetQuality()} | {stream.GetTranslation()}"
                 };
             }
-            streams.Sort((x, y) => { 
+            streams.Sort((x, y) => {
                 if (x.CdnName != y.CdnName) {
-                    return x.CdnName?.First() > y.CdnName?.First() ? 1 : -1;
+                    var names = new[] { x.CdnName, y.CdnName };
+                    names.Sort(StringComparer.InvariantCultureIgnoreCase);
+
+                    return names[0] == x.CdnName ? -1 : 1;
                 }
 
                 var xQuality = x.GetQuality();

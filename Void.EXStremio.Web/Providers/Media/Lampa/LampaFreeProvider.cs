@@ -2,13 +2,13 @@
 using Void.EXStremio.Web.Controllers;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
-    class LampaPrismaProvider : LampaMediaProvider {
+    class LampaFreeProvider : LampaMediaProvider {
         public override string ServiceName {
             get { return "Prisma"; }
         }
 
         protected override Uri BaseUri {
-            get { return new Uri("https://api.manhan.one/"); }
+            get { return new Uri("http://212.34.151.5:8880/"); }
         }
 
         protected override string InitUriPath { get; } = "/lite/events";
@@ -23,11 +23,11 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                     //"collaps-dash" - proxy :(
                     //"kinotochka" - proxy :(
                     //"rezka" - proxy :(
-                    "aniliberty", "ashdi", "eneyida", "hdvb", "lumex"
+                    "filmix", "mirage", "kinobase", "vdbmovies", "videodb", "lumex", "eneyida", "veoveo", "hdvb", "kinotochka", "cdnvideohub"
                     ];
             }
         }
 
-        public LampaPrismaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
+        public LampaFreeProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
     }
 }

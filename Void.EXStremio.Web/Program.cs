@@ -116,6 +116,8 @@ namespace Void.EXStremio.Web {
             serviceCollection.AddHttpClient(KinopoiskCatalogProvider.HTTP_CLIENT_KEY, httpClient => {
                 httpClient.DefaultRequestHeaders.Add(HeaderNames.UserAgent, "Kinopoisk/1.0.0");
                 httpClient.DefaultRequestHeaders.Add("Service-Id", "76");
+            }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             });
 
             var videoCdnApiKey = Environment.GetEnvironmentVariable(VideoCdnConfig.CONFIG_API_KEY);
@@ -142,6 +144,9 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddHttpClient(nameof(CollapsCdnProvider), httpClient => {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
             } else {
                 logger?.LogWarning("[INIT] Collaps provider not initialized - api key is missing.");
@@ -156,6 +161,9 @@ namespace Void.EXStremio.Web {
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                     httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
                     // http://flicksbar.mom/
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
             } else {
                 logger?.LogWarning("[INIT] HDVB provider not initialized - api key is missing.");
@@ -173,7 +181,8 @@ namespace Void.EXStremio.Web {
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                 }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
                     AutomaticDecompression = DecompressionMethods.All,
-                    UseCookies = false
+                    UseCookies = false,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
             } else {
                 logger?.LogWarning("[INIT] HdRezka provider not initialized - api key is missing.");
@@ -197,6 +206,9 @@ namespace Void.EXStremio.Web {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                     httpClient.DefaultRequestHeaders.Referrer = new Uri("https://kinomix.web.app/");
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
             } else {
                 logger?.LogWarning("[INIT] KODIK provider not initialized - api key is missing.");
@@ -210,6 +222,9 @@ namespace Void.EXStremio.Web {
                 serviceCollection.AddHttpClient(nameof(AshdiCdnProvider), httpClient => {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
             } else {
                 logger?.LogWarning("[INIT] Ashdi provider not initialized - api key is missing.");
@@ -222,16 +237,31 @@ namespace Void.EXStremio.Web {
                     httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
                     httpClient.Timeout = TimeSpan.FromSeconds(15);
                 }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
-                    AllowAutoRedirect = true
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 });
 
-                serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlackProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlack2Provider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaCubProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaBwaProvider>();
-                serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaBwaProvider>();
+                serviceCollection.AddSingleton<IMediaProvider, LampaFreeProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaPrismaProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlackProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaAkterBlack2Provider>();
+
+                //serviceCollection.AddSingleton<IMediaProvider, LampaCubProvider>();
+                //serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
             }
+
+            serviceCollection.ConfigureHttpClientDefaults(clientBuilder => {
+                clientBuilder.ConfigureHttpClient(httpClient => {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                    httpClient.Timeout = TimeSpan.FromSeconds(15);
+                });
+                clientBuilder.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler {
+                    AllowAutoRedirect = true,
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                });
+            });
         }
     }
 }

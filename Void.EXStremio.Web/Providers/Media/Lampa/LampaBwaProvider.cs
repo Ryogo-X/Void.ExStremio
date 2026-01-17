@@ -11,7 +11,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
             get { return new Uri("https://rc.bwa.to/"); }
         }
         protected override string[] AllowedCdn {
-            get { return ["ashdi", "hdvb", "kinotochka", "remux", "veoveo"]; }
+            //get { return ["ashdi", "hdvb", "kinotochka", "remux", "veoveo"]; }
+            get { return ["kinotochka", "remux", "veoveo"]; }
         }
 
         public LampaBwaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache, logger) { }
