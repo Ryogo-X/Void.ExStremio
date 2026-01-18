@@ -14,7 +14,9 @@ namespace Void.EXStremio.Web.Providers.Metadata {
 
     public class TmdbMetaProvider : IAdditionalMetadataProvider {
         const string PREFIX = "tmdb";
+        const string IMDB_PREFIX = "tt";
         const string baseUri = "https://api.themoviedb.org/3/TYPE/ID?append_to_response=external_ids,alternative_titles,translations&api_key=API_KEY";
+        const string imdbSearchUri = "https://api.themoviedb.org/3/find/ID?external_source=imdb_id&api_key=API_KEY";
 
         readonly IHttpClientFactory httpClientFactory;
         readonly TmdbConfig config;
@@ -25,12 +27,20 @@ namespace Void.EXStremio.Web.Providers.Metadata {
         }
 
         public bool CanGetAdditionalMetadata(string id) {
-            return id.StartsWith(PREFIX);
+            return id.StartsWith(PREFIX) || id.StartsWith(IMDB_PREFIX);
         }
 
         public async Task<ExtendedMeta?> GetAdditionalMetadataAsync(string type, string id) {
-            if (!id.StartsWith(PREFIX)) { throw new InvalidOperationException($"Identifier {id} is not supported by TMDB metadata provider"); }
+            if (id.StartsWith(PREFIX)) {
+                return await GetTmdbMetadata(type, id);
+            } else if (id.StartsWith(IMDB_PREFIX)) {
+                return await GetImdbMetadata(type, id);
+            }
 
+            throw new InvalidOperationException($"Identifier {id} is not supported by TMDB metadata provider");
+        }
+
+        async Task<ExtendedMeta?> GetTmdbMetadata(string type, string id) {
             var apiType = string.Empty;
             if (type == "movie") {
                 apiType = "movie";
@@ -60,14 +70,14 @@ namespace Void.EXStremio.Web.Providers.Metadata {
                 meta.ImdbId = response.ExternalIds.ImdbId;
                 var altTitles = response.AlternativeTitles
                     ?.Titles
-                    ?.Select(x => x.Title)?.ToArray() 
+                    ?.Select(x => x.Title)?.ToArray()
                     ?? [];
                 meta.AlternativeTitles.AddRange(altTitles);
                 var localizedTitles = response.Translations?
                     .Translations
                     ?.Where(x => !string.IsNullOrWhiteSpace(x.Data.Title))
                     ?.Select(x => new LocalizedTitle(x.CountryCode, x.Data.Title))
-                    ?.ToArray() 
+                    ?.ToArray()
                     ?? [];
                 meta.LocalizedTitles.AddRange(localizedTitles);
 
@@ -100,6 +110,29 @@ namespace Void.EXStremio.Web.Providers.Metadata {
                 meta.LocalizedTitles.AddRange(localizedTitles);
 
                 return meta;
+            }
+
+            return null;
+        }
+
+        async Task<ExtendedMeta?> GetImdbMetadata(string type, string id) {
+            var uriString = imdbSearchUri
+                .Replace("ID", id)
+                .Replace("API_KEY", config.ApiKey);
+            var uri = new Uri(uriString);
+            var client = httpClientFactory.CreateClient();
+
+            var response = await client.GetFromJsonAsync<FindTmdbResponse>(uri);
+
+            int? tmdbId = null;
+            if (type == "movie") {
+                tmdbId = response.MovieResults?.FirstOrDefault()?.Id;
+            } else if (type == "series") {
+                tmdbId = response.TvResults?.FirstOrDefault()?.Id;
+            }
+
+            if (tmdbId.HasValue) {
+                return await GetTmdbMetadata(type, tmdbId.ToString());
             }
 
             return null;

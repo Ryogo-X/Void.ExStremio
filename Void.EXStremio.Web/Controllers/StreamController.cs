@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -303,18 +304,26 @@ namespace Void.EXStremio.Web.Controllers {
             return file;
         }
 
-        [HttpGet("/stream/proxy/{encodedUrl}")]
-        [HttpHead("/stream/proxy/{encodedUrl}")]
+        [HttpGet("/stream/proxy/{**encodedUrl}")]
+        [HttpHead("/stream/proxy/{**encodedUrl}")]
         public async Task<FileResult> Proxy(string encodedUrl) {
             var uriString = Encoding.UTF8.GetString(Convert.FromBase64String(Uri.UnescapeDataString(encodedUrl)));
 
+            Debug.WriteLine(uriString);
             var isPlaylist = false;
-            if (uriString.EndsWith(".m3u8")) {
+            RangeHeaderValue rangeHeader = null;
+            if (uriString.EndsWith(".ts")) {
+                isPlaylist = false;
+            } else if (uriString.EndsWith(".m3u8")) {
                 isPlaylist = true;
             } else {
                 var client = httpClientFactory.CreateClient();
-                var headResponse = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, uriString));
-                if (headResponse.Content.Headers.ContentType.MediaType == "application/vnd.apple.mpegurl") {
+                var headResponse = await client.GetAsync(uriString, HttpCompletionOption.ResponseHeadersRead);
+                if (headResponse.RequestMessage.RequestUri.OriginalString.EndsWith(".ts")) {
+                    isPlaylist = false;
+                } else if (headResponse.RequestMessage.RequestUri.OriginalString.EndsWith(".m3u8")) {
+                    isPlaylist = true;
+                } else if (headResponse.Content.Headers.ContentType.MediaType == "application/vnd.apple.mpegurl") {
                     isPlaylist = true;
                 } else if (headResponse.Content.Headers.ContentType.MediaType == "application/x-mpegurl") {
                     isPlaylist = true;
@@ -326,16 +335,50 @@ namespace Void.EXStremio.Web.Controllers {
 
                 var response = await client.GetAsync(uriString);
                 var playlist = await response.Content.ReadAsStringAsync();
-                var matches = Regex.Matches(playlist, "(http://|https://)[^\"\\n]*");
+                var matches = Regex.Matches(playlist, "(?<uri>([^\"\n]*(.m3u8|.ts|.m4s)|http://[^\n\"]*|https://[^\n\"]*))");
                 foreach(Match match in matches) {
-                    var url = UrlBuilder.AbsoluteUrl(Request, "/stream/proxy/" + Convert.ToBase64String(Encoding.UTF8.GetBytes(match.Value.Trim()))).ToString();
-                    playlist = playlist.Replace(match.Value.Trim(), url);
+                    var cdnUri = match.Groups["uri"].Value.Trim();
+                    if (cdnUri.StartsWith('/')) {
+                        cdnUri = new Uri(new Uri(uriString), cdnUri).ToString();
+                    }
+                    var url = UrlBuilder.AbsoluteUrl(Request, "/stream/proxy/" + Convert.ToBase64String(Encoding.UTF8.GetBytes(cdnUri))).ToString();
+                    playlist = playlist.Replace(match.Groups["uri"].Value.Trim(), url);
                 }
 
-                return new FileContentResult(Encoding.UTF8.GetBytes(playlist), response.Content.Headers.ContentType.MediaType);
+                var mediaType = response.Content.Headers.ContentType.MediaType;
+                if (!mediaType.Contains(".mpegurl")) {
+                    mediaType = "application/vnd.apple.mpegurl";
+                }
+
+                return new FileContentResult(Encoding.UTF8.GetBytes(playlist), mediaType);
             } else {
+                if (uriString.EndsWith(".mp4")) {
+
+                    if (Request.Headers.ContainsKey("Range")) {
+                        rangeHeader = new RangeHeaderValue();
+                        foreach (var rangeString in Request.Headers.Range) {
+                            var range = rangeString.Replace("bytes=", "").Split('-', StringSplitOptions.RemoveEmptyEntries);
+                            rangeHeader.Ranges.Add(new RangeItemHeaderValue(long.Parse(range[0]), range.Length > 1 ? long.Parse(range[1]) : null));
+                        }
+                    }
+                }
                 var client = httpClientFactory.CreateClient();
-                var response = await client.GetAsync(uriString, HttpCompletionOption.ResponseHeadersRead);
+                var message = new HttpRequestMessage(HttpMethod.Get, uriString);
+                if (rangeHeader != null) {
+                    message.Headers.Range = rangeHeader;
+                }
+                
+                var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead);
+                if (response.Content.Headers.ContentRange != null) {
+                    Response.Headers.Append("Content-Range", response.Content.Headers.ContentRange.ToString());
+                    Response.StatusCode = (int)HttpStatusCode.PartialContent;
+                }
+                if (response.Headers.AcceptRanges != null) {
+                    Response.Headers.Append("Accept-Ranges", string.Join(", ", response.Headers.AcceptRanges));
+                }
+                if (response.Content.Headers.ContentLength.HasValue) {
+                    Response.Headers.ContentLength = response.Content.Headers.ContentLength.Value;
+                }
 
                 return new FileStreamResult(await response.Content.ReadAsStreamAsync(), response.Content.Headers.ContentType.MediaType);
             }

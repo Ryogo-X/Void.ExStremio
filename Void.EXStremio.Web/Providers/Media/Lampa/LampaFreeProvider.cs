@@ -19,11 +19,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected override string[] AllowedCdn {
             get { 
                 return [
-                    //"collaps" - proxy :(
-                    //"collaps-dash" - proxy :(
-                    //"kinotochka" - proxy :(
-                    //"rezka" - proxy :(
-                    "filmix", "mirage", "kinobase", "vdbmovies", "videodb", "lumex", "eneyida", "veoveo", "hdvb", "kinotochka", "cdnvideohub"
+                    "vdbmovies", "lumex", "cdnvideohub"
                     ];
             }
         }

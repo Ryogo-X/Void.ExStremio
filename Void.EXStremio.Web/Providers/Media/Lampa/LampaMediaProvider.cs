@@ -36,17 +36,19 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected abstract string[] AllowedCdn { get; }
 
         static string[] BannedCdn = [
-            "mirage",
-            "veoveo"
+            "vdbmovies"
         ];
 
         static string[] proxyCdn = [
             "cdnvideohub",
-            "hdvb",
             "kinobase",
+            "kinotochka",
             "lumex",
-            "vdbmovies",
-            "videodb"
+            "mirage",
+            "rezka",
+            "veoveo",
+            "videodb",
+            "aniliberty"
         ];
 
         protected LampaMediaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache) {
@@ -154,8 +156,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                     uriString += $"&kinopoisk_id={meta.KpId.Replace("kp", "")}";
                 }
                 uriString += $"&original_title={meta.Name}&year={meta.GetYear()}";
-                if (meta.LocalizedTitles.Any(x => x.LangCode == "ru")) {
-                    uriString += $"&title={meta.LocalizedTitles.First(x => x.LangCode == "ru").Title}";
+                if (meta.LocalizedTitles.Any(x => x.LangCode.ToLowerInvariant() == "ru")) {
+                    uriString += $"&title={meta.LocalizedTitles.First(x => x.LangCode.ToLowerInvariant() == "ru").Title}";
                 }
                 if (!season.HasValue) {
                     uriString += "&serial=0";
@@ -348,6 +350,10 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                         if (stream.Title == "auto") {
                             stream.Name = stream.Name.Replace("[auto]", $"[{apiResponse.MaxQuality}]");
                             stream.Title = apiResponse.Title;
+                        } else {
+                            if (!string.IsNullOrWhiteSpace(apiResponse.Translate) && stream.Title?.Contains(apiResponse.Translate) != true) {
+                                stream.Title = $"{stream.Title} ({apiResponse.Translate})";
+                            }
                         }
                     }
                     streams.AddRange(newStreams);
