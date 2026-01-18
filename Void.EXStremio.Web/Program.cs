@@ -251,6 +251,15 @@ namespace Void.EXStremio.Web {
                 //serviceCollection.AddSingleton<IMediaProvider, LampaShowyProvider>();
             }
 
+            serviceCollection.AddHttpClient("proxy", httpClient => {
+                httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
+                httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLang);
+                httpClient.Timeout = TimeSpan.FromSeconds(60);
+            }).ConfigurePrimaryHttpMessageHandler(config => new HttpClientHandler {
+                AllowAutoRedirect = true,
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            });
+
             serviceCollection.ConfigureHttpClientDefaults(clientBuilder => {
                 clientBuilder.ConfigureHttpClient(httpClient => {
                     httpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);

@@ -312,12 +312,12 @@ namespace Void.EXStremio.Web.Controllers {
             Debug.WriteLine(uriString);
             var isPlaylist = false;
             RangeHeaderValue rangeHeader = null;
-            if (uriString.EndsWith(".ts")) {
+            if (uriString.EndsWith(".ts") || uriString.EndsWith(".m4s")) {
                 isPlaylist = false;
             } else if (uriString.EndsWith(".m3u8")) {
                 isPlaylist = true;
             } else {
-                var client = httpClientFactory.CreateClient();
+                var client = httpClientFactory.CreateClient("proxy");
                 var headResponse = await client.GetAsync(uriString, HttpCompletionOption.ResponseHeadersRead);
                 if (headResponse.RequestMessage.RequestUri.OriginalString.EndsWith(".ts")) {
                     isPlaylist = false;
@@ -331,7 +331,7 @@ namespace Void.EXStremio.Web.Controllers {
             }
 
             if (isPlaylist) {
-                var client = httpClientFactory.CreateClient();
+                var client = httpClientFactory.CreateClient("proxy");
 
                 var response = await client.GetAsync(uriString);
                 var playlist = await response.Content.ReadAsStringAsync();
@@ -353,7 +353,6 @@ namespace Void.EXStremio.Web.Controllers {
                 return new FileContentResult(Encoding.UTF8.GetBytes(playlist), mediaType);
             } else {
                 if (uriString.EndsWith(".mp4")) {
-
                     if (Request.Headers.ContainsKey("Range")) {
                         rangeHeader = new RangeHeaderValue();
                         foreach (var rangeString in Request.Headers.Range) {
@@ -362,7 +361,7 @@ namespace Void.EXStremio.Web.Controllers {
                         }
                     }
                 }
-                var client = httpClientFactory.CreateClient();
+                var client = httpClientFactory.CreateClient("proxy");
                 var message = new HttpRequestMessage(HttpMethod.Get, uriString);
                 if (rangeHeader != null) {
                     message.Headers.Range = rangeHeader;
