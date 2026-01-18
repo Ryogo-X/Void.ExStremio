@@ -14,7 +14,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected override string[] AllowedCdn {
             get { 
                 return [
-                    //"paladin", "mirage", "kinobase", "rezka", "veoveo", "remux", "kinotochka", "videodb",
+                    "paladin", "mirage", "kinobase", "rezka", "veoveo", "remux", "kinotochka", "videodb",
                     "aniliberty", "animevost", "animebesst", "kodik"
                     ]; 
             }
