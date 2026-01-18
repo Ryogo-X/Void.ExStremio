@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
+using AngleSharp.Dom;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Void.EXStremio.Web.Models;
@@ -300,6 +301,44 @@ namespace Void.EXStremio.Web.Controllers {
             }
 
             return file;
+        }
+
+        [HttpGet("/stream/proxy/{encodedUrl}")]
+        [HttpHead("/stream/proxy/{encodedUrl}")]
+        public async Task<FileResult> Proxy(string encodedUrl) {
+            var uriString = Encoding.UTF8.GetString(Convert.FromBase64String(Uri.UnescapeDataString(encodedUrl)));
+
+            var isPlaylist = false;
+            if (uriString.EndsWith(".m3u8")) {
+                isPlaylist = true;
+            } else {
+                var client = httpClientFactory.CreateClient();
+                var headResponse = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, uriString));
+                if (headResponse.Content.Headers.ContentType.MediaType == "application/vnd.apple.mpegurl") {
+                    isPlaylist = true;
+                } else if (headResponse.Content.Headers.ContentType.MediaType == "application/x-mpegurl") {
+                    isPlaylist = true;
+                }
+            }
+
+            if (isPlaylist) {
+                var client = httpClientFactory.CreateClient();
+
+                var response = await client.GetAsync(uriString);
+                var playlist = await response.Content.ReadAsStringAsync();
+                var matches = Regex.Matches(playlist, "(http://|https://)[^\"\\n]*");
+                foreach(Match match in matches) {
+                    var url = UrlBuilder.AbsoluteUrl(Request, "/stream/proxy/" + Convert.ToBase64String(Encoding.UTF8.GetBytes(match.Value.Trim()))).ToString();
+                    playlist = playlist.Replace(match.Value.Trim(), url);
+                }
+
+                return new FileContentResult(Encoding.UTF8.GetBytes(playlist), response.Content.Headers.ContentType.MediaType);
+            } else {
+                var client = httpClientFactory.CreateClient();
+                var response = await client.GetAsync(uriString, HttpCompletionOption.ResponseHeadersRead);
+
+                return new FileStreamResult(await response.Content.ReadAsStreamAsync(), response.Content.Headers.ContentType.MediaType);
+            }
         }
     }
 }

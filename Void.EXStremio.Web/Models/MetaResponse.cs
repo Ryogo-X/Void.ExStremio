@@ -88,7 +88,7 @@ namespace Void.EXStremio.Web.Models {
         public Uri Poster { get; set; }
 
         [JsonPropertyName("released")]
-        public DateTimeOffset Released { get; set; }
+        public DateTimeOffset? Released { get; set; }
 
         [JsonPropertyName("runtime")]
         public string Runtime { get; set; }

@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using System.Xml;
 using Void.EXStremio.Web.Controllers;
+using System.Text;
 
 namespace Void.EXStremio.Web.Providers.Media.Lampa {
     abstract class LampaMediaProvider : MediaProviderBase, IMediaProvider, IInitializableProvider {
@@ -33,6 +34,20 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         protected virtual string CustomArgs { get; }
 
         protected abstract string[] AllowedCdn { get; }
+
+        static string[] BannedCdn = [
+            "mirage",
+            "veoveo"
+        ];
+
+        static string[] proxyCdn = [
+            "cdnvideohub",
+            "hdvb",
+            "kinobase",
+            "lumex",
+            "vdbmovies",
+            "videodb"
+        ];
 
         protected LampaMediaProvider(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<StreamController> logger) : base(httpClientFactory, cache) {
             CACHE_KEY_MOVIE_STREAMS = $"{ServiceName}:STREAMS:[uri]";
@@ -120,6 +135,8 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
 
             var mediaStreams = new List<MediaStream>();
             foreach (var videoSource in videoSources) {
+                if (BannedCdn.Contains(videoSource.Balanser)) { continue; }
+
                 var uriString = videoSource.Url;
                 if (uriString.Contains("?")) {
                     uriString += "&rjson=true";
@@ -153,9 +170,13 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                 var newStreams = await GetStreams(uriString, videoSource.Balanser, season, episode);
                 mediaStreams.AddRange(newStreams);
             }
+            mediaStreams = mediaStreams.Distinct().ToList();
 
-            foreach(var stream in mediaStreams) {
+            foreach (var stream in mediaStreams) {
                 stream.Url = stream.Url.Replace("&account_email=rsmail@ukr.net", "");
+                if (proxyCdn.Contains(stream.CdnName) && !stream.Url.Contains("/stream/proxy/")) {
+                    stream.Url = "/stream/proxy/" + Convert.ToBase64String(Encoding.UTF8.GetBytes(stream.Url));
+                }
             }
 
             return mediaStreams.ToArray();
@@ -323,6 +344,12 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
                     var nestedApiResponse = await JsonSerializerExt.DeserializeAsync<LampaCallPlayApiResponse>(json);
 
                     var newStreams = await GetStreams(nestedApiResponse, balancer);
+                    foreach(var stream in newStreams) {
+                        if (stream.Title == "auto") {
+                            stream.Name = stream.Name.Replace("[auto]", $"[{apiResponse.MaxQuality}]");
+                            stream.Title = apiResponse.Title;
+                        }
+                    }
                     streams.AddRange(newStreams);
                 }
             }
