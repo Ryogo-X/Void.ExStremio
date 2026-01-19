@@ -8,7 +8,7 @@ namespace Void.EXStremio.Web.Providers.Media.Lampa {
         }
 
         protected override Uri BaseUri {
-            get { return new Uri("https://lam2.akter-black.com/"); }
+            get { return new Uri("https://lam9.akter-black.com/"); }
         }
 
         protected override string[] AllowedCdn {
